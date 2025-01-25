@@ -1,0 +1,15 @@
+[project]
+name = "earthquake-hazards"
+version = "0.0.1"
+description = "Data engineering pipeline to publish a dashboard about earthquakes across the world"
+readme = "README.md"
+requires-python = ">=3.8.1"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "apache-airflow[google,postgres]>=2.10.4",
+]
+
+[tool.pyright]
+reportUnusedCallResult = false
