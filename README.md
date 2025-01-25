@@ -1,4 +1,6 @@
-# Project
+# Earthquake Hazards Dashboard
+
+This project creates a pipeline using the [USGS earthquake api](https://www.usgs.gov/programs/earthquake-hazards) to deliver it's data to the Cloud to create a Dashboard to visualize the earthquake data across the world.
 
 ## TODO
 
