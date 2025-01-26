@@ -3,6 +3,6 @@ output "bucket_name" {
 }
 
 output "airflow_gcs_key" {
-  value     = google_service_account_key.airflow_gcs_key.private_key
+  value     = google_service_account_key.airflow_key.private_key
   sensitive = true
 }

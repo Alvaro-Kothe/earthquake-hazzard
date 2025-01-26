@@ -2,7 +2,11 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "6.8.0"
+      version = ">= 6.8"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = ">= 3.6"
     }
   }
 }
@@ -12,15 +16,15 @@ provider "google" {
   region  = var.region
 }
 
-resource "random_uuid" "uuid" {
+resource "random_uuid" "bucket_suffix" {
   keepers = {
     bucket_prefix = var.bucket_prefix
   }
 }
 
 resource "google_storage_bucket" "gcs_bucket" {
-  name          = "${var.bucket_prefix}-${random_uuid.uuid.result}"
-  location      = "US"
+  name          = "${var.bucket_prefix}-${random_uuid.bucket_suffix.result}"
+  location      = var.location
   storage_class = "STANDARD"
   force_destroy = true
 
@@ -119,3 +123,11 @@ resource "google_bigquery_dataset_iam_member" "airflow" {
   role       = "roles/bigquery.dataEditor"
   member     = "serviceAccount:${google_service_account.airflow.email}"
 }
+
+# TODO: Create VM
+# TODO: Create metadata database for AIRFLOW
+# TODO: Create environment variables into the VM for AIRFLOW
+# TODO: send docker compose to VM
+# TODO: Install docker
+# TODO: start docker compose service
+# TODO: output vm ip and username
