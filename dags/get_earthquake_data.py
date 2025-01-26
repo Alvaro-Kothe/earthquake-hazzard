@@ -68,7 +68,7 @@ def import_earthquake_data():
         path.write_bytes(response.content)
         logger.info("Sent data to %s", str(path))
 
-        return path
+        return path  # pyright: ignore [reportReturnType]
 
     download_and_export_to_gcs()
 
