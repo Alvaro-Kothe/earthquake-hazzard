@@ -1,10 +1,9 @@
 from datetime import timedelta
-import os
 from airflow.decorators import dag
 from airflow.decorators import task
+from airflow.models import Variable
 import pendulum
 import logging
-from airflow.providers.google.cloud.operators.gcs import GCSCreateBucketOperator
 from airflow.io.path import ObjectStoragePath
 
 logger = logging.getLogger(__name__)
@@ -23,17 +22,13 @@ logger = logging.getLogger(__name__)
 # TODO: https://airflow.apache.org/docs/apache-airflow-providers-google/stable/connections/gcp.html
 # TODO: Use secrets backend https://airflow.apache.org/docs/apache-airflow-providers-google/stable/secrets-backends/google-cloud-secret-manager-backend.html
 
-BUCKET = os.getenv("GCP_BUCKET")
-
 default_args = {
     "start_date": pendulum.datetime(2025, 1, 1, tz="UTC"),
     "depends_on_past": False,
     "retries": 2,
     "retry_delay": timedelta(minutes=1),
-    "bucket_name": BUCKET,
 }
 
-base_path = ObjectStoragePath(f"gs://{BUCKET}/", conn_id="google_cloud_default")
 
 # pyright: reportOptionalMemberAccess=false
 @dag(
@@ -50,6 +45,10 @@ def import_earthquake_data():
         data_interval_end: pendulum.DateTime | None = None,
     ) -> ObjectStoragePath:
         import requests
+
+        base_path = ObjectStoragePath(
+            f"gs://{Variable.get('gcp_bucket')}/", conn_id="google_cloud_default"
+        )
 
         api_url = "https://earthquake.usgs.gov/fdsnws/event/1/query"
         params = {

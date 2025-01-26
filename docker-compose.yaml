@@ -70,7 +70,7 @@ x-airflow-common: &airflow-common
     # The following line can be used to set a custom config file, stored in the local config folder
     # If you want to use it, outcomment it and replace airflow.cfg with the name of your config file
     # AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
-    GCP_BUCKET: ${GCP_BUCKET}
+    AIRFLOW_VAR_GCP_BUCKET: ${GCP_BUCKET}
     AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT: ${AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT}
   volumes:
     - ./dags:/opt/airflow/dags
