@@ -1,0 +1,50 @@
+[
+  {
+    "name": "earthquake_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Unique identifier for the earthquake"
+  },
+  {
+    "name": "position",
+    "type": "GEOGRAPHY",
+    "mode": "REQUIRED",
+    "description": "Geographical point (latitude, longitude) representing the earthquake location"
+  },
+  {
+    "name": "depth",
+    "type": "FLOAT",
+    "mode": "REQUIRED",
+    "description": "Depth of the earthquake in kilometers"
+  },
+  {
+    "name": "magnitude",
+    "type": "FLOAT",
+    "mode": "REQUIRED",
+    "description": "Magnitude of the earthquake"
+  },
+  {
+    "name": "time",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED",
+    "description": "Timestamp of the earthquake"
+  },
+  {
+    "name": "alert",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Alert level of the earthquake"
+  },
+  {
+    "name": "significance",
+    "type": "INTEGER",
+    "mode": "REQUIRED",
+    "description": "Significance of the earthquake"
+  },
+  {
+    "name": "country_id",
+    "type": "INTEGER",
+    "mode": "NULLABLE",
+    "description": "Foreign key referencing the 3-digit country code in the countries table. Null elements may indicate the earthquake occurred on the sea."
+  }
+]

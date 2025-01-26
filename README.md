@@ -2,6 +2,11 @@
 
 This project creates a pipeline using the [USGS earthquake api](https://www.usgs.gov/programs/earthquake-hazards) to deliver it's data to the Cloud to create a Dashboard to visualize the earthquake data across the world.
 
+## Table Streucture
+
+The table schema with the earthquake information is defined in [`earthquakes.json`](/bigquery/earthquakes.json).
+This table is partitioned daily and clustered by country and alert, defined in [`main.tf`](/main.tf).
+
 ## Setup Environment
 
 ### Setup the cloud
