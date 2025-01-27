@@ -17,7 +17,6 @@ default_args = {
     "retries": 2,
     "retry_delay": timedelta(minutes=1),
 }
-UNKNOWN = "Unknown"
 
 
 @task
@@ -84,38 +83,6 @@ def transform_features(path: ObjectStoragePath):
         )
 
     return result
-
-
-# TODO: This should run in another dag, using expand
-@task
-def get_country(latitude: str, longitude: str) -> str:
-    # TODO: Import all data into the database, without geolocation
-    # TODO: Have a separate dag/function that fills the country information where needed.
-
-    # TODO: Get the country, using the coordinates, where the earthquake occurred. (store the encoding, ISO 3166-1 alpha-3 code; 3-digit country-code; country name) # check if 3-digit country code can be stored as i16
-    import requests
-
-    url = "https://nominatim.openstreetmap.org/reverse"
-    headers = {"User-Agent": "earthquake-dashboard/1.0", "Accept-Language": "en"}
-    params = {
-        "lat": latitude,
-        "lon": longitude,
-        "format": "json",
-        "zoom": 3,  # country level
-        "addressdetails": 1,
-    }
-    try:
-        response = requests.get(url, params, headers=headers)
-        response.raise_for_status()
-
-        data = response.json()
-        address = data.get("address", {})
-        country = address.get("country", UNKNOWN)
-
-        return country
-    except Exception as e:
-        logger.error("Error fetching location data: %s", e)
-        raise
 
 
 @dag(

@@ -80,7 +80,6 @@ resource "google_bigquery_table" "default" {
     field         = "time"
     expiration_ms = 2592000000 # 30 days
   }
-  require_partition_filter = true
 
   clustering = ["country_id", "alert"]
 
