@@ -4,7 +4,7 @@ This project creates a pipeline using the [USGS earthquake api](https://www.usgs
 
 ## Table Streucture
 
-The table schema with the earthquake information is defined in [`earthquakes.json`](/bigquery/earthquakes.json).
+The table schema with the earthquake information is defined in [`earthquakes.json`](/bigquery/earthquakes_schema.json).
 This table is partitioned daily and clustered by country and alert, defined in [`main.tf`](/main.tf).
 
 ## Setup Environment
