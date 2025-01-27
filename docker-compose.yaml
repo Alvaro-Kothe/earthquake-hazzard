@@ -74,10 +74,10 @@ x-airflow-common: &airflow-common
     AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT: '{"conn_type": "google_cloud_platform", "extra": {"keyfile_dict": ${GOOGLE_CLOUD_KEY}}}'
     AIRFLOW_CONN_BIGQUERY_DEFAULT: '{"conn_type": "gcpbigquery", "extra": {"keyfile_dict": ${GOOGLE_CLOUD_KEY}}}'
   volumes:
-    - ./dags:/opt/airflow/dags
-    - ./logs:/opt/airflow/logs
-    - ./config:/opt/airflow/config
-    - ./plugins:/opt/airflow/plugins
+    - ./src/dags:/opt/airflow/dags
+    - ./src/logs:/opt/airflow/logs
+    - ./src/config:/opt/airflow/config
+    - ./src/plugins:/opt/airflow/plugins
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on: &airflow-common-depends-on
     redis:
