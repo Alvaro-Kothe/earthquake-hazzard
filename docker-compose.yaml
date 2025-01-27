@@ -71,7 +71,8 @@ x-airflow-common: &airflow-common
     # If you want to use it, outcomment it and replace airflow.cfg with the name of your config file
     # AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
     AIRFLOW_VAR_GCP_BUCKET: ${AIRFLOW_VAR_GCP_BUCKET}
-    AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT: ${AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT}
+    AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT: '{"conn_type": "google_cloud_platform", "extra": {"keyfile_dict": ${GOOGLE_CLOUD_KEY}}}'
+    AIRFLOW_CONN_BIGQUERY_DEFAULT: '{"conn_type": "gcpbigquery", "extra": {"keyfile_dict": ${GOOGLE_CLOUD_KEY}}}'
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
