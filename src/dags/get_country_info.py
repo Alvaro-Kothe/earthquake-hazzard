@@ -41,6 +41,7 @@ def get_country(row):
     import pathlib
 
     import requests
+    import json
 
     earthquake_id, longitude, latitude = row
     ctc_file = pathlib.Path(__file__).parent / "include/country_to_continent.json"

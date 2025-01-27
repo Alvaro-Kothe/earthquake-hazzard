@@ -42,9 +42,15 @@
     "description": "Significance of the earthquake"
   },
   {
-    "name": "country_id",
-    "type": "INTEGER",
+    "name": "country",
+    "type": "STRING",
     "mode": "NULLABLE",
-    "description": "Foreign key referencing country_id in the countries table. NULL values indicate that it was not fetched. Unkown have a specific key."
+    "description": "Country Name"
+  },
+  {
+    "name": "continent",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Continent Name. The country field is used to fill this value."
   }
 ]

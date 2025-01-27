@@ -55,49 +55,15 @@ resource "google_bigquery_table" "default" {
   table_id            = "earthquake"
   deletion_protection = false # set to "true" in production
 
-  table_constraints {
-    primary_key {
-      columns = ["earthquake_id"]
-    }
-
-    foreign_keys {
-
-      referenced_table {
-        project_id = google_bigquery_table.country_lookup.project
-        dataset_id = google_bigquery_table.country_lookup.dataset_id
-        table_id   = google_bigquery_table.country_lookup.table_id
-      }
-
-      column_references {
-        referenced_column  = "country_id"
-        referencing_column = "country_id"
-      }
-    }
-  }
-
   time_partitioning {
     type          = "DAY"
     field         = "time"
     expiration_ms = 2592000000 # 30 days
   }
 
-  clustering = ["country_id", "alert"]
+  clustering = ["continent", "country", "alert"]
 
   schema = file("bigquery/earthquakes_schema.json")
-}
-
-resource "google_bigquery_table" "country_lookup" {
-  dataset_id          = google_bigquery_dataset.default.dataset_id
-  table_id            = "countries"
-  deletion_protection = false # set to "true" in production
-
-  table_constraints {
-    primary_key {
-      columns = ["country_id"]
-    }
-  }
-
-  schema = file("bigquery/countries_schema.json")
 }
 
 # TODO: See if there is a better way to integrate the key into airflow
