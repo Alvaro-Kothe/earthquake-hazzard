@@ -45,6 +45,8 @@ docker compose up
 - [Earthquake Hazards Program API](https://earthquake.usgs.gov): Earthquake information across the world.
 - [Nominatim API](https://nominatim.openstreetmap.org/ui/search.html): Reverse Geocoding
 
+The continent lookup was taken from <https://gist.github.com/stevewithington/20a69c0b6d2ff846ea5d35e5fc47f26c>.
+
 ## TODO
 
 - [ ] Use terraform/opentofu to setup a vm on the cloud
