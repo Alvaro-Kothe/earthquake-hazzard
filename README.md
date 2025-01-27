@@ -40,6 +40,11 @@ terraform output -raw airflow_gcs_key | base64 -d
 docker compose up
 ```
 
+## Used services
+
+- [Earthquake Hazards Program API](https://earthquake.usgs.gov): Earthquake information across the world.
+- [Nominatim API](https://nominatim.openstreetmap.org/ui/search.html): Reverse Geocoding
+
 ## TODO
 
 - [ ] Use terraform/opentofu to setup a vm on the cloud

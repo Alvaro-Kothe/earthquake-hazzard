@@ -124,6 +124,12 @@ resource "google_bigquery_dataset_iam_member" "airflow" {
   member     = "serviceAccount:${google_service_account.airflow.email}"
 }
 
+resource "google_project_iam_member" "bigquery_job_user" {
+  project = google_bigquery_table.default.project
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${google_service_account.airflow.email}"
+}
+
 # TODO: Create VM
 # TODO: Create metadata database for AIRFLOW
 # TODO: Create environment variables into the VM for AIRFLOW

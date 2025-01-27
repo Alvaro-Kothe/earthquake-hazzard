@@ -45,6 +45,6 @@
     "name": "country_id",
     "type": "INTEGER",
     "mode": "NULLABLE",
-    "description": "Foreign key referencing the 3-digit country code in the countries table. Null elements may indicate the earthquake occurred on the sea."
+    "description": "Foreign key referencing country_id in the countries table. NULL values indicate that it was not fetched. Unkown have a specific key."
   }
 ]
