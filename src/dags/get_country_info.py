@@ -14,11 +14,11 @@ UNKNOWN = "Unknown"
 def check_country_is_null() -> PokeReturnValue:
     hook = BigQueryHook()
     client = hook.get_client()
-    query_check_no_country = """SELECT 
-        earthquake_id, 
-        ST_X(position) AS longitude, 
-        ST_Y(position) AS latitude 
-    FROM earthquake.earthquake 
+    query_check_no_country = """SELECT
+        earthquake_id,
+        ST_X(position) AS longitude,
+        ST_Y(position) AS latitude
+    FROM earthquake.earthquake
     WHERE country IS NULL"""
     query_job = client.query(query_check_no_country)
     rows = query_job.result()
@@ -41,6 +41,7 @@ def get_country(row):
     import pathlib
 
     import requests
+    from google.cloud import bigquery
 
     earthquake_id, longitude, latitude = row
     ctc_file = pathlib.Path(__file__).parent / "include/country_to_continent.json"
@@ -65,9 +66,9 @@ def get_country(row):
 
         data = response.json()
         country = data.get("address", {}).get("country", UNKNOWN)
-        country_id_str = data.get("extratags", {}).get("ISO3166-1:numeric", "-1")
-        country_id = int(country_id_str)
-        continent = country_to_continent.get(country_id)
+        country_id_str = data.get("extratags", {}).get("ISO3166-1:numeric")
+        continent = country_to_continent.get(country_id_str)
+        assert continent is not None or country == UNKNOWN
         if country == UNKNOWN:
             logger.info(
                 "No country information found for coordinates: (%s, %s). Likely in the sea.",
@@ -80,20 +81,26 @@ def get_country(row):
             latitude,
             longitude,
             country,
-            country_id,
+            country_id_str,
         )
 
-        set_continent = f", continent = '{continent}'" if continent else ""
         query_insert = f"""
-        UPDATE {table_name} 
-        SET country = '{country}' {set_continent}
-        WHERE earthquake_id = '{earthquake_id}'
+        UPDATE {table_name}
+        SET country = @country, continent = @continent
+        WHERE earthquake_id = @earthquake_id
         """
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("country", "STRING", country),
+                bigquery.ScalarQueryParameter("continent", "STRING", continent),
+                bigquery.ScalarQueryParameter("earthquake_id", "STRING", earthquake_id),
+            ]
+        )
         logger.debug("Sent query: %s", query_insert)
-        add_country_job = client.query(query_insert)
+        add_country_job = client.query(query_insert, job_config=job_config)
         add_country_job.result(0)
         logger.info(
-            "Set earthquake_id %s country to %s and continent to %s",
+            "Set earthquake_id %s: country='%s' and continent='%s'",
             earthquake_id,
             country,
             continent or "NULL",

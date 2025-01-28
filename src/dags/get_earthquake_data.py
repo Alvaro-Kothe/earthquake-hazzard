@@ -1,11 +1,18 @@
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
+from typing import Any
+import uuid
 
+from airflow.models.xcom_arg import XComArg
+from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 import pendulum
 from airflow.decorators import dag, task
 from airflow.io.path import ObjectStoragePath
 from airflow.models import Variable
-from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
+from airflow.providers.google.cloud.operators.bigquery import (
+    BigQueryCreateEmptyTableOperator,
+    BigQueryInsertJobOperator,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -50,12 +57,12 @@ def download_and_export_to_gcs(
     return path  # pyright: ignore [reportReturnType]
 
 
-@task(do_xcom_push=True)
+@task()
 def transform_features(path: ObjectStoragePath):
     import json
     from datetime import datetime
 
-    result = []
+    result: list[list[tuple[str, str, Any]]] = []
 
     with path.open() as f:
         features = json.load(f)["features"]
@@ -70,19 +77,73 @@ def transform_features(path: ObjectStoragePath):
         significance = properties["sig"]
 
         result.append(
-            {
-                "earthquake_id": id,
-                "latitude": lat,
-                "longitude": lon,
-                "depth": depth,
-                "magnitude": magnitude,
-                "time": time,
-                "alert": alert or "NULL",
-                "significance": significance,
-            }
+            [
+                ("earthquake_id", "STRING", id),
+                ("latitude", "FLOAT64", lat),
+                ("longitude", "FLOAT64", lon),
+                ("depth", "FLOAT64", depth),
+                ("magnitude", "FLOAT64", magnitude),
+                ("time", "TIMESTAMP", time),
+                ("alert", "STRING", alert),
+                ("significance", "INT64", significance),
+            ]
         )
 
     return result
+
+
+@task
+def create_temp_table():
+    from google.cloud import bigquery
+
+    hook = BigQueryHook()
+    client = hook.get_client()
+
+    table_prefix = "earthquake.earthquake_staging_"
+    table_name = table_prefix + uuid.uuid4().hex
+    query_create_table = f"""
+    CREATE TABLE `{table_name}`
+    LIKE earthquake.earthquake
+    OPTIONS(expiration_timestamp = @expiration)
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter(
+                "expiration", "TIMESTAMP", datetime.now() + timedelta(hours=1)
+            ),
+        ]
+    )
+
+    client.query_and_wait(query_create_table, job_config=job_config)
+    return table_name
+
+
+@task
+def import_to_temp(table_name, row):
+    from google.cloud import bigquery
+
+    hook = BigQueryHook()
+    client = hook.get_client()
+    insert_query = f"""INSERT INTO `{table_name}`
+    (earthquake_id, position, depth, magnitude, time, alert, significance)
+    VALUES
+        (
+        @earthquake_id,
+        ST_GEOGPOINT(@longitude, @latitude),
+        @depth,
+        @magnitude,
+        @time,
+        @alert,
+        @significance
+        )
+       """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter(col, col_type, value)
+            for (col, col_type, value) in row
+        ]
+    )
+    client.query_and_wait(insert_query, job_config=job_config)
 
 
 @dag(
@@ -93,8 +154,9 @@ def transform_features(path: ObjectStoragePath):
     tags=["earthquake"],
 )
 def import_earthquake_data():
-    load_to_bq = BigQueryInsertJobOperator(
-        task_id="load_to_bq",
+    temp_table = create_temp_table()
+    merge_from_temp = BigQueryInsertJobOperator(
+        task_id="merge_from_temp",
         configuration={
             "query": {
                 "query": "{% include 'sql/insert_earthquake.sql' %}",
@@ -103,7 +165,13 @@ def import_earthquake_data():
             }
         },
     )
-    transform_features(download_and_export_to_gcs()) >> load_to_bq
+    downloaded_data = download_and_export_to_gcs()
+    features = transform_features(downloaded_data)
+    (
+        temp_table
+        >> import_to_temp.partial(table_name=temp_table).expand(row=features)
+        >> merge_from_temp
+    )
 
 
 import_earthquake_data()
