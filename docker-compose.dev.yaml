@@ -15,8 +15,8 @@ services:
   airflow-scheduler:
     <<: *common
 
-  airflow-worker:
+  airflow-triggerer:
     <<: *common
 
-  airflow-triggerer:
+  airflow-init:
     <<: *common

@@ -94,10 +94,30 @@ resource "google_project_iam_member" "bigquery_job_user" {
   member  = "serviceAccount:${google_service_account.airflow.email}"
 }
 
-# TODO: Create VM
+# Create a Google Cloud VM instance
+resource "google_compute_instance" "default" {
+  name         = var.vm_name
+  machine_type = "e2-standard-4"
+  zone         = var.zone
+
+  boot_disk {
+    initialize_params {
+      image = "family/debian-12"
+      size  = 30
+    }
+  }
+
+  network_interface {
+    network = "default"
+    access_config {}
+  }
+
+  service_account {
+    email  = google_service_account.airflow.email
+    scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+  }
+}
+
 # TODO: Create metadata database for AIRFLOW
-# TODO: Create environment variables into the VM for AIRFLOW
-# TODO: send docker compose to VM
-# TODO: Install docker
 # TODO: start docker compose service
 # TODO: Schedule VM to start and shutdown: https://cloud.google.com/compute/docs/instances/schedule-instance-start-stop

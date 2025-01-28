@@ -22,3 +22,13 @@ variable "bucket_prefix" {
   description = "Bucket prefix"
 }
 
+variable "zone" {
+  type        = string
+  default     = "us-central1-a"
+  description = "Zone"
+}
+
+variable "vm_name" {
+  default      = "my-vm"
+  description = "VM name"
+}

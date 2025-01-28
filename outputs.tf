@@ -6,3 +6,7 @@ output "airflow_gcs_key" {
   value     = google_service_account_key.airflow_key.private_key
   sensitive = true
 }
+
+output "vm_name" {
+  value = google_compute_instance.default.name
+}
