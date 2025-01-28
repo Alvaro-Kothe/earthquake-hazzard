@@ -13,3 +13,4 @@ dev = [
 
 [tool.pyright]
 reportUnusedCallResult = false
+reportExplicitAny = false
