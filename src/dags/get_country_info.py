@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from airflow.decorators import dag, task
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
@@ -35,21 +35,17 @@ def check_country_is_null() -> PokeReturnValue:
     return PokeReturnValue(is_done=condition_met, xcom_value=op_ret_value)
 
 
-@task
-def get_country(row):
+@task(retries=3, retry_delay=timedelta(seconds=1), retry_exponential_backoff=True)
+def fetch_country_data(row):
     import json
     import pathlib
 
     import requests
-    from google.cloud import bigquery
 
     earthquake_id, longitude, latitude = row
     ctc_file = pathlib.Path(__file__).parent / "include/country_to_continent.json"
     country_to_continent = json.loads(ctc_file.read_bytes())
 
-    hook = BigQueryHook()
-    client = hook.get_client()
-    table_name = "earthquake.earthquake"
     url = "https://nominatim.openstreetmap.org/reverse"
     headers = {"User-Agent": "earthquake-dashboard/1.0", "Accept-Language": "en"}
     params = {
@@ -68,7 +64,6 @@ def get_country(row):
         country = data.get("address", {}).get("country", UNKNOWN)
         country_id_str = data.get("extratags", {}).get("ISO3166-1:numeric")
         continent = country_to_continent.get(country_id_str)
-        assert continent is not None or country == UNKNOWN
         if country == UNKNOWN:
             logger.info(
                 "No country information found for coordinates: (%s, %s). Likely in the sea.",
@@ -83,37 +78,51 @@ def get_country(row):
             country,
             country_id_str,
         )
-
-        query_insert = f"""
-        UPDATE {table_name}
-        SET country = @country, continent = @continent
-        WHERE earthquake_id = @earthquake_id
-        """
-        job_config = bigquery.QueryJobConfig(
-            query_parameters=[
-                bigquery.ScalarQueryParameter("country", "STRING", country),
-                bigquery.ScalarQueryParameter("continent", "STRING", continent),
-                bigquery.ScalarQueryParameter("earthquake_id", "STRING", earthquake_id),
-            ]
-        )
-        logger.debug("Sent query: %s", query_insert)
-        add_country_job = client.query(query_insert, job_config=job_config)
-        add_country_job.result(0)
-        logger.info(
-            "Set earthquake_id %s: country='%s' and continent='%s'",
-            earthquake_id,
-            country,
-            continent or "NULL",
-        )
+        return {
+            "earthquake_id": earthquake_id,
+            "country": country,
+            "continent": continent,
+        }
     except Exception as e:
         logger.error("Error fetching or inserting country data: %s", e)
         raise
 
 
+@task
+def insert_country_data(data):
+    from google.cloud import bigquery
+
+    hook = BigQueryHook()
+    client = hook.get_client()
+    table_name = "earthquake.earthquake"
+    query_insert = f"""
+    UPDATE {table_name}
+    SET country = @country, continent = @continent
+    WHERE earthquake_id = @earthquake_id
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("country", "STRING", data["country"]),
+            bigquery.ScalarQueryParameter("continent", "STRING", data["continent"]),
+            bigquery.ScalarQueryParameter(
+                "earthquake_id", "STRING", data["earthquake_id"]
+            ),
+        ]
+    )
+    client.query_and_wait(query_insert, job_config=job_config)
+    logger.info(
+        "Set earthquake_id %s: country='%s' and continent='%s'",
+        data["earthquake_id"],
+        data["country"],
+        data["continent"],
+    )
+
+
 @dag(catchup=False, schedule="@daily", start_date=datetime(2025, 1, 1))
 def get_country_info():
     needs_to_insert = check_country_is_null()
-    get_country.expand(row=needs_to_insert)
+    fetched_data = fetch_country_data.expand(row=needs_to_insert)
+    insert_country_data.expand(data=fetched_data)
 
 
 get_country_info()

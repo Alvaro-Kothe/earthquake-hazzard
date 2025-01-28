@@ -1,14 +1,14 @@
 import logging
+import uuid
 from datetime import datetime, timedelta
 from typing import Any
-import uuid
 
-from airflow.models.xcom_arg import XComArg
-from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 import pendulum
 from airflow.decorators import dag, task
 from airflow.io.path import ObjectStoragePath
 from airflow.models import Variable
+from airflow.models.xcom_arg import XComArg
+from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from airflow.providers.google.cloud.operators.bigquery import (
     BigQueryCreateEmptyTableOperator,
     BigQueryInsertJobOperator,
