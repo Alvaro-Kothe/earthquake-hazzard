@@ -34,6 +34,8 @@ The key to be used for airflow you get with this command:
 terraform output -raw airflow_gcs_key | base64 -d
 ```
 
+To configure the VM look at [cloud-setup.md](/docs/cloud-setup.md).
+
 ### Run the Airflow service
 
 There are two `docker-compose` files.
