@@ -66,11 +66,11 @@ The continent lookup was taken from <https://gist.github.com/stevewithington/20a
 
 ## TODO
 
-- [ ] Use terraform/opentofu to setup a vm on the cloud
+- [x] Use terraform/opentofu to setup a vm on the cloud
 - [x] Choose a cloud provider: GCP, Azure, AWS
 - [x] Choose a dataset / datastream api
 - [ ] Setup an orchestrator for an ETL pipeline
   - [ ] The orchestrator needs to run on the cloud
-  - [ ] The orchestrator needs to move the data to a data warehouse
+  - [x] The orchestrator needs to move the data to a data warehouse
 - [ ] Perform transformations on the data (use dbt or spark)
 - [ ] Use the transformed data to create a dashboard.
