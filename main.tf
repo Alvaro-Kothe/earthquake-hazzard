@@ -16,6 +16,8 @@ provider "google" {
   region  = var.region
 }
 
+data "google_project" "default" {}
+
 resource "random_uuid" "bucket_suffix" {
   keepers = {
     bucket_prefix = var.bucket_prefix
@@ -94,6 +96,12 @@ resource "google_project_iam_member" "bigquery_job_user" {
   member  = "serviceAccount:${google_service_account.airflow.email}"
 }
 
+resource "google_project_iam_member" "vm_schedule" {
+  project = data.google_project.default.project_id
+  role    = "roles/compute.instanceAdmin.v1"
+  member  = "serviceAccount:service-${data.google_project.default.number}@compute-system.iam.gserviceaccount.com"
+}
+
 # Create a Google Cloud VM instance
 resource "google_compute_instance" "default" {
   name         = var.vm_name
@@ -119,6 +127,28 @@ resource "google_compute_instance" "default" {
 
   metadata = {
     user-data = file("./scripts/docker-compose.ign")
+  }
+
+  resource_policies = [google_compute_resource_policy.hourly.id]
+
+  depends_on = [google_project_iam_member.vm_schedule]
+}
+
+resource "google_compute_resource_policy" "hourly" {
+  name        = "gce-policy"
+  region      = var.region
+  description = "Start and stop instances"
+  instance_schedule_policy {
+    time_zone = "Etc/UTC"
+
+    # Start vm at midnight and keep it running for 1h and 15m
+    vm_start_schedule {
+      schedule = "0 0 * * *"
+    }
+
+    vm_stop_schedule {
+      schedule = "15 1 * * *"
+    }
   }
 }
 }
