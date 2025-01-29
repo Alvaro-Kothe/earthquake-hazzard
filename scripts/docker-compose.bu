@@ -1,0 +1,9 @@
+variant: fcos
+version: 1.4.0
+storage:
+  files:
+    - path: /opt/bin/docker-compose
+      mode: 0755
+      overwrite: true
+      contents:
+        source: "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64"

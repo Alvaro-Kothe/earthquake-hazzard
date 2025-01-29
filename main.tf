@@ -97,13 +97,13 @@ resource "google_project_iam_member" "bigquery_job_user" {
 # Create a Google Cloud VM instance
 resource "google_compute_instance" "default" {
   name         = var.vm_name
-  machine_type = "e2-standard-4"
+  machine_type = "e2-medium"
   zone         = var.zone
 
   boot_disk {
     initialize_params {
-      image = "family/debian-12"
-      size  = 30
+      image = "fedora-coreos-cloud/fedora-coreos-stable"
+      size  = 20
     }
   }
 
@@ -116,6 +116,11 @@ resource "google_compute_instance" "default" {
     email  = google_service_account.airflow.email
     scopes = ["https://www.googleapis.com/auth/cloud-platform"]
   }
+
+  metadata = {
+    user-data = file("./scripts/docker-compose.ign")
+  }
+}
 }
 
 # TODO: Create metadata database for AIRFLOW
