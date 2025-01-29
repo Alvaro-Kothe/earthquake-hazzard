@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 UNKNOWN = "Unknown"
 
 
-@task.sensor(poke_interval=60, timeout=60 * 30, mode="poke")
+@task.sensor(poke_interval=120, timeout=60 * 30, mode="reschedule")
 def check_country_is_null() -> PokeReturnValue:
     hook = BigQueryHook()
     client = hook.get_client()
