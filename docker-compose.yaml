@@ -73,10 +73,10 @@ x-airflow-common: &airflow-common
     AIRFLOW_VAR_GCP_BUCKET: ${AIRFLOW_VAR_GCP_BUCKET}
     AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT: "google-cloud-platform://"
   volumes:
-    - ${AIRFLOW_PROJ_DIR:-./src}/dags:/opt/airflow/dags
-    - ${AIRFLOW_PROJ_DIR:-./src}/logs:/opt/airflow/logs
-    - ${AIRFLOW_PROJ_DIR:-./src}/config:/opt/airflow/config
-    - ${AIRFLOW_PROJ_DIR:-./src}/plugins:/opt/airflow/plugins
+    - ${AIRFLOW_PROJ_DIR:-./src}/dags:/opt/airflow/dags:z
+    - ${AIRFLOW_PROJ_DIR:-./src}/logs:/opt/airflow/logs:z
+    - ${AIRFLOW_PROJ_DIR:-./src}/config:/opt/airflow/config:z
+    - ${AIRFLOW_PROJ_DIR:-./src}/plugins:/opt/airflow/plugins:z
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on: &airflow-common-depends-on
     postgres:
