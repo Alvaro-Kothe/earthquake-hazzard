@@ -66,7 +66,6 @@ resource "google_bigquery_table" "default" {
   schema = file("bigquery/earthquakes_schema.json")
 }
 
-# TODO: See if there is a better way to integrate the key into airflow
 resource "google_service_account" "airflow" {
   account_id   = "airflow"
   display_name = "Orchestrator Airflow"
@@ -101,4 +100,4 @@ resource "google_project_iam_member" "bigquery_job_user" {
 # TODO: send docker compose to VM
 # TODO: Install docker
 # TODO: start docker compose service
-# TODO: output vm ip and username
+# TODO: Schedule VM to start and shutdown: https://cloud.google.com/compute/docs/instances/schedule-instance-start-stop

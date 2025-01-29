@@ -36,9 +36,24 @@ terraform output -raw airflow_gcs_key | base64 -d
 
 ### Run the Airflow service
 
+There are two `docker-compose` files.
+The first has the secret blocks omitted to use the Google cloud's provided secrets.
+The second simply add the secrets for local development.
+
+In the production environment, start the services with
+
 ```
 docker compose up
 ```
+
+In the development environment starts it with
+
+```
+docker-compose -f docker-compose.yaml -f docker-compose.dev.yaml up
+```
+
+Be sure to setup the correct environment variables.
+Also, be sure to provide the path for your credentials, or from the service.
 
 ## Used services
 

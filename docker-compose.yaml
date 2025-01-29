@@ -1,3 +1,6 @@
+volumes:
+  postgres-db-volume:
+
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -57,7 +60,7 @@ x-airflow-common: &airflow-common
     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
     AIRFLOW__CORE__FERNET_KEY: ""
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
-    AIRFLOW__CORE__LOAD_EXAMPLES: "true"
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
     # yamllint disable rule:line-length
     # Use simple http server on scheduler for health checks
@@ -71,8 +74,7 @@ x-airflow-common: &airflow-common
     # If you want to use it, outcomment it and replace airflow.cfg with the name of your config file
     # AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
     AIRFLOW_VAR_GCP_BUCKET: ${AIRFLOW_VAR_GCP_BUCKET}
-    AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT: '{"conn_type": "google_cloud_platform", "extra": {"keyfile_dict": ${GOOGLE_CLOUD_KEY}}}'
-    AIRFLOW_CONN_BIGQUERY_DEFAULT: '{"conn_type": "gcpbigquery", "extra": {"keyfile_dict": ${GOOGLE_CLOUD_KEY}}}'
+    AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT: "google-cloud-platform://"
   volumes:
     - ${AIRFLOW_PROJ_DIR:-./src}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-./src}/logs:/opt/airflow/logs
@@ -287,6 +289,3 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
-
-volumes:
-  postgres-db-volume:

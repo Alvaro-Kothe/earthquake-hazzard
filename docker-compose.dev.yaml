@@ -1,0 +1,22 @@
+secrets:
+  gcp_credential:
+    file: ${GOOGLE_APPLICATION_CREDENTIALS:-./credentials/gcp.json}
+
+x-airflow-common: &common
+  environment:
+    GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcp_credential
+  secrets:
+    - gcp_credential
+
+services:
+  airflow-webserver:
+    <<: *common
+
+  airflow-scheduler:
+    <<: *common
+
+  airflow-worker:
+    <<: *common
+
+  airflow-triggerer:
+    <<: *common
