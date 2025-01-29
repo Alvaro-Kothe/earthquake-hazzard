@@ -126,7 +126,7 @@ resource "google_compute_instance" "default" {
   }
 
   metadata = {
-    user-data = file("./scripts/docker-compose.ign")
+    user-data = file("./cloud-startup/docker-compose.ign")
   }
 
   resource_policies = [google_compute_resource_policy.hourly.id]
