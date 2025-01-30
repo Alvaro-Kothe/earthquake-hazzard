@@ -1,0 +1,17 @@
+version: 2
+
+sources:
+  - name: earthquake
+    database: "{{ env_var('GCP_PROJECT_NAME') }}"
+    tables:
+      - name: earthquake
+
+models:
+  - name: country_earthquakes
+    description: >
+      Aggregated table of earthquakes occurring in each continent, country, day.
+      The table contains the number of earthquakes, and average magnitude, depth and significance.
+
+  - name: magnitude_summary
+    description: >
+      Magnitudes level count by continent and country.

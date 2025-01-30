@@ -1,0 +1,11 @@
+name: "earthquake_analysis"
+version: "1.0.0"
+
+profile: "earthquake_analysis"
+
+model-paths: ["models"]
+
+models:
+  earthquake_analysis:
+    core:
+      +materialized: table
