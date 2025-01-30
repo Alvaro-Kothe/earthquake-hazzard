@@ -7,10 +7,8 @@ import pendulum
 from airflow.decorators import dag, task
 from airflow.io.path import ObjectStoragePath
 from airflow.models import Variable
-from airflow.models.xcom_arg import XComArg
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from airflow.providers.google.cloud.operators.bigquery import (
-    BigQueryCreateEmptyTableOperator,
     BigQueryInsertJobOperator,
 )
 
@@ -57,11 +55,14 @@ def download_and_export_to_gcs(
 
 
 @task()
-def transform_features(path: ObjectStoragePath):
+def import_to_bigquery(table_name: str, path: ObjectStoragePath):
     import json
     from datetime import datetime
 
-    result: list[list[tuple[str, str, Any]]] = []
+    hook = BigQueryHook()
+    client = hook.get_client()
+
+    rows_to_insert: list[dict[str, Any]] = []
 
     with path.open() as f:
         features = json.load(f)["features"]
@@ -75,20 +76,36 @@ def transform_features(path: ObjectStoragePath):
         alert = properties["alert"]
         significance = properties["sig"]
 
-        result.append(
-            [
-                ("earthquake_id", "STRING", id),
-                ("latitude", "FLOAT64", lat),
-                ("longitude", "FLOAT64", lon),
-                ("depth", "FLOAT64", depth),
-                ("magnitude", "FLOAT64", magnitude),
-                ("time", "TIMESTAMP", time),
-                ("alert", "STRING", alert),
-                ("significance", "INT64", significance),
-            ]
+        logger.info(
+            "going to insert %s, POINT(%.3f %.3f), %.2f, %s, %s, %d",
+            id,
+            lon,
+            lat,
+            depth,
+            magnitude,
+            time.isoformat(),
+            alert,
+            significance,
+        )
+        rows_to_insert.append(
+            {
+                "earthquake_id": id,
+                "position": f"POINT({lon} {lat})",
+                "depth": depth,
+                "magnitude": magnitude,
+                "time": time.isoformat(),
+                "alert": alert,
+                "significance": significance,
+            }
         )
 
-    return result
+    errors = client.insert_rows_json(table_name, rows_to_insert)
+    if errors == []:
+        logger.info("New rows have been added.")
+    else:
+        logger.error("Encountered errors while inserting rows: %s", errors)
+
+    assert errors == []
 
 
 @task
@@ -108,41 +125,13 @@ def create_temp_table():
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
             bigquery.ScalarQueryParameter(
-                "expiration", "TIMESTAMP", datetime.now() + timedelta(hours=1)
+                "expiration", "TIMESTAMP", datetime.now() + timedelta(hours=3)
             ),
         ]
     )
 
     client.query_and_wait(query_create_table, job_config=job_config)
     return table_name
-
-
-@task
-def import_to_temp(table_name, row):
-    from google.cloud import bigquery
-
-    hook = BigQueryHook()
-    client = hook.get_client()
-    insert_query = f"""INSERT INTO `{table_name}`
-    (earthquake_id, position, depth, magnitude, time, alert, significance)
-    VALUES
-        (
-        @earthquake_id,
-        ST_GEOGPOINT(@longitude, @latitude),
-        @depth,
-        @magnitude,
-        @time,
-        @alert,
-        @significance
-        )
-       """
-    job_config = bigquery.QueryJobConfig(
-        query_parameters=[
-            bigquery.ScalarQueryParameter(col, col_type, value)
-            for (col, col_type, value) in row
-        ]
-    )
-    client.query_and_wait(insert_query, job_config=job_config)
 
 
 @dag(
@@ -164,13 +153,12 @@ def get_earthquake_data():
             }
         },
     )
-    downloaded_data = download_and_export_to_gcs()
-    features = transform_features(downloaded_data)
-    (
-        temp_table
-        >> import_to_temp.partial(table_name=temp_table).expand(row=features)
-        >> merge_from_temp
+
+    downloaded_data_path = download_and_export_to_gcs()
+    filled_temp_table = import_to_bigquery(
+        table_name=temp_table, path=downloaded_data_path
     )
+    filled_temp_table >> merge_from_temp
 
 
 get_earthquake_data()
