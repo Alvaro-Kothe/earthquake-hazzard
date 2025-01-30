@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 UNKNOWN = "Unknown"
 
-DB_PATH = "/tmp/geolocation_cache.db"
+DB_PATH = "/data/geolocation_cache.db"
 
 
 @task
