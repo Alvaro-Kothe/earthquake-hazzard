@@ -118,7 +118,9 @@ def insert_country_data(data):
     )
 
 
-@dag(catchup=False, schedule="@daily", start_date=datetime(2025, 1, 1))
+@dag(
+    catchup=False, schedule="@daily", start_date=datetime(2025, 1, 1), max_active_runs=1
+)
 def get_country_info():
     needs_to_insert = check_country_is_null()
     fetched_data = fetch_country_data.expand(row=needs_to_insert)
