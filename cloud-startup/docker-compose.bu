@@ -1,5 +1,5 @@
 variant: fcos
-version: 1.4.0
+version: 1.6.0
 storage:
   files:
     - path: /opt/bin/docker-compose
@@ -7,3 +7,25 @@ storage:
       overwrite: true
       contents:
         source: "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64"
+
+systemd:
+  units:
+    - name: earthquake.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Run Earthquake DAGs
+        After=network-online.target docker.service
+        Requires=docker.service
+        ConditionPathExists=/home/core/earthquake/docker-compose.yaml
+        ConditionPathExists=/opt/bin/docker-compose
+
+        [Service]
+        Restart=always
+        WorkingDirectory=/home/core/earthquake
+        ExecStartPre=/usr/bin/chcon -t bin_t /opt/bin/docker-compose
+        ExecStart=/opt/bin/docker-compose up
+        ExecStop=/opt/bin/docker-compose down
+
+        [Install]
+        WantedBy=multi-user.target

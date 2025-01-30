@@ -1,6 +1,6 @@
 {
   "ignition": {
-    "version": "3.3.0"
+    "version": "3.5.0"
   },
   "storage": {
     "files": [
@@ -11,6 +11,15 @@
           "source": "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64"
         },
         "mode": 493
+      }
+    ]
+  },
+  "systemd": {
+    "units": [
+      {
+        "contents": "[Unit]\nDescription=Run Earthquake DAGs\nAfter=network-online.target docker.service\nRequires=docker.service\nConditionPathExists=/home/core/earthquake/docker-compose.yaml\nConditionPathExists=/opt/bin/docker-compose\n\n[Service]\nRestart=always\nWorkingDirectory=/home/core/earthquake\nExecStartPre=/usr/bin/chcon -t bin_t /opt/bin/docker-compose\nExecStart=/opt/bin/docker-compose up\nExecStop=/opt/bin/docker-compose down\n\n[Install]\nWantedBy=multi-user.target\n",
+        "enabled": true,
+        "name": "earthquake.service"
       }
     ]
   }
