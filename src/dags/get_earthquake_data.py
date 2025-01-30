@@ -152,7 +152,7 @@ def import_to_temp(table_name, row):
     catchup=False,
     tags=["earthquake"],
 )
-def import_earthquake_data():
+def get_earthquake_data():
     temp_table = create_temp_table()
     merge_from_temp = BigQueryInsertJobOperator(
         task_id="merge_from_temp",
@@ -173,4 +173,4 @@ def import_earthquake_data():
     )
 
 
-import_earthquake_data()
+get_earthquake_data()
