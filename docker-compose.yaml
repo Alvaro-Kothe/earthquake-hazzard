@@ -210,4 +210,4 @@ services:
       _PIP_ADDITIONAL_REQUIREMENTS: ""
     user: "0:0"
     volumes:
-      - .:/sources
+      - ${AIRFLOW_PROJ_DIR:-./src}:/sources:z
