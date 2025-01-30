@@ -42,7 +42,6 @@ def download_and_export_to_gcs(
         "starttime": data_interval_start.to_iso8601_string(),
         "endtime": data_interval_end.to_iso8601_string(),
         "format": "geojson",  # TODO: If OOM, consider a different format
-        "limit": 2,  # TODO: Change for final version
     }
     response = requests.get(api_url, params=params)
     response.raise_for_status()
