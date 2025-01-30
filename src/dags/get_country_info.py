@@ -64,10 +64,10 @@ def get_cached_location(latitude, longitude, max_distance_km=1):
         (*point, max_distance_km, *point),
     )
 
-    (country, continent) = cursor.fetchone()
+    result = cursor.fetchone()
     conn.close()
 
-    return (country, continent)
+    return result
 
 
 def save_to_cache(latitude, longitude, country, continent):
