@@ -105,7 +105,7 @@ resource "google_project_iam_member" "vm_schedule" {
 # Create a Google Cloud VM instance
 resource "google_compute_instance" "default" {
   name         = var.vm_name
-  machine_type = "e2-medium"
+  machine_type = "e2-standard-2"
   zone         = var.zone
 
   boot_disk {
