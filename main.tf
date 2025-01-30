@@ -151,8 +151,3 @@ resource "google_compute_resource_policy" "hourly" {
     }
   }
 }
-}
-
-# TODO: Create metadata database for AIRFLOW
-# TODO: start docker compose service
-# TODO: Schedule VM to start and shutdown: https://cloud.google.com/compute/docs/instances/schedule-instance-start-stop
