@@ -4,7 +4,7 @@ root = true
 end_of_line = lf
 insert_final_newline = true
 
-[*.py]
+[*.{py,sql}]
 indent_style = space
 trim_trailing_whitespace = true
 indent_size = 4
