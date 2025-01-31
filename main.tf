@@ -132,6 +132,12 @@ resource "google_compute_instance" "default" {
   resource_policies = [google_compute_resource_policy.hourly.id]
 
   depends_on = [google_project_iam_member.vm_schedule]
+
+  lifecycle {
+    # HACK: prevents asking to update the instance without changes.
+    # https://stackoverflow.com/a/68945937
+    ignore_changes = [boot_disk]
+  }
 }
 
 resource "google_compute_resource_policy" "hourly" {
