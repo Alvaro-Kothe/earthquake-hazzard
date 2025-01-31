@@ -57,10 +57,12 @@ docker-compose -f docker-compose.yaml -f docker-compose.dev.yaml up
 Be sure to setup the correct environment variables.
 Also, be sure to provide the path for your credentials, or from the service.
 
-## Used services
+## Used Tools
 
 - [Earthquake Hazards Program API](https://earthquake.usgs.gov): Earthquake information across the world.
 - [Nominatim API](https://nominatim.openstreetmap.org/ui/search.html): Reverse Geocoding
+- [Superset](https://superset.apache.org/): BI
+- [mapbox](https://www.mapbox.com/): map
 
 The continent lookup was taken from <https://gist.github.com/stevewithington/20a69c0b6d2ff846ea5d35e5fc47f26c>.
 
