@@ -8,7 +8,10 @@
         "overwrite": true,
         "path": "/opt/bin/docker-compose",
         "contents": {
-          "source": "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64"
+          "source": "https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-x86_64",
+          "verification": {
+            "hash": "sha256-ed1917fb54db184192ea9d0717bcd59e3662ea79db48bff36d3475516c480a6b"
+          }
         },
         "mode": 493
       }
