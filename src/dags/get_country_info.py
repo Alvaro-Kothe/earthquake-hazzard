@@ -124,7 +124,7 @@ def create_temp_table():
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
             bigquery.ScalarQueryParameter(
-                "expiration", "TIMESTAMP", datetime.now() + timedelta(hours=3)
+                "expiration", "TIMESTAMP", datetime.now() + timedelta(days=3)
             ),
         ]
     )
