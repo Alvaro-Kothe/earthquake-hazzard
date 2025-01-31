@@ -205,7 +205,7 @@ def insert_country_data(table_name, data: list[dict[str, str]]):
     catchup=False, schedule="@daily", start_date=datetime(2025, 1, 1), max_active_runs=1
 )
 def get_country_info():
-    create_lat_lon_lookup = setup_cache()
+    create_lat_lon_lookup = setup_cache().as_setup()
 
     needs_to_insert = check_country_is_null()
     temp_table_name = create_temp_table()
