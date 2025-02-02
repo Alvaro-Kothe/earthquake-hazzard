@@ -52,8 +52,8 @@ x-airflow-common: &airflow-common
   # In order to add custom dependencies or upgrade provider packages you can use your extended image.
   # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
-  image: apache/airflow:2.10.4-python3.12
-  # build: .
+  # image: apache/airflow:2.10.4-python3.12
+  build: .
   environment: &airflow-common-env
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CORE__FERNET_KEY: ""
@@ -72,6 +72,7 @@ x-airflow-common: &airflow-common
     # If you want to use it, outcomment it and replace airflow.cfg with the name of your config file
     AIRFLOW_CONFIG: "/opt/airflow/config/airflow.cfg"
     AIRFLOW_VAR_GCP_BUCKET: ${AIRFLOW_VAR_GCP_BUCKET}
+    GCP_PROJECT_NAME: ${GCP_PROJECT_NAME}
     AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT: "google-cloud-platform://"
   volumes:
     - ${AIRFLOW_PROJ_DIR:-./src}/dags:/opt/airflow/dags:z
