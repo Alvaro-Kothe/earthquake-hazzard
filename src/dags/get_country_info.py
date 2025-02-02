@@ -81,7 +81,7 @@ def save_to_cache(latitude, longitude, country, continent):
     conn.close()
 
 
-@task.sensor(poke_interval=120, timeout=60 * 30, mode="reschedule")
+@task.sensor(poke_interval=120, timeout=60 * 6, mode="reschedule")
 def check_country_is_null() -> PokeReturnValue:
     hook = BigQueryHook()
     client = hook.get_client()
@@ -202,7 +202,10 @@ def insert_country_data(table_name, data: list[dict[str, str]]):
 
 
 @dag(
-    catchup=False, schedule="@daily", start_date=datetime(2025, 1, 1), max_active_runs=1
+    catchup=False,
+    schedule="@daily",
+    start_date=datetime(2025, 1, 1),
+    max_active_runs=1,
 )
 def get_country_info():
     create_lat_lon_lookup = setup_cache().as_setup()
