@@ -26,7 +26,7 @@ systemd:
         Restart=always
         WorkingDirectory=/home/core/earthquake
         ExecStartPre=/usr/bin/chcon -t bin_t /opt/bin/docker-compose
-        ExecStart=/opt/bin/docker-compose up
+        ExecStart=/opt/bin/docker-compose up --build
         ExecStop=/opt/bin/docker-compose down
 
         [Install]
