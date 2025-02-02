@@ -57,6 +57,20 @@ docker-compose -f docker-compose.yaml -f docker-compose.dev.yaml up
 Be sure to setup the correct environment variables.
 Also, be sure to provide the path for your credentials, or from the service.
 
+### Setup Superset
+
+Clone the Superset repo
+
+```
+git submodule update --init --recursive
+```
+
+Start Superset
+
+```
+docker compose -f ./superset/docker-compose-image-tag.yml up
+```
+
 ## Used Tools
 
 - [Earthquake Hazards Program API](https://earthquake.usgs.gov): Earthquake information across the world.
