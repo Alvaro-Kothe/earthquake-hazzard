@@ -55,7 +55,7 @@ resource "google_bigquery_dataset" "default" {
 resource "google_bigquery_table" "default" {
   dataset_id          = google_bigquery_dataset.default.dataset_id
   table_id            = "earthquake"
-  deletion_protection = false # set to "true" in production
+  deletion_protection = true # set to "true" in production
 
   time_partitioning {
     type  = "DAY"
