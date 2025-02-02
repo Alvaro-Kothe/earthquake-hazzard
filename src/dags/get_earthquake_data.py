@@ -1,18 +1,61 @@
 import logging
+import os
 import uuid
 from datetime import datetime, timedelta
 from typing import Any
 
 import pendulum
+from airflow import XComArg
 from airflow.decorators import dag, task
 from airflow.io.path import ObjectStoragePath
 from airflow.models import Variable
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from airflow.providers.google.cloud.operators.bigquery import (
+    BigQueryCreateEmptyTableOperator,
+    BigQueryDeleteTableOperator,
     BigQueryInsertJobOperator,
 )
 
 logger = logging.getLogger(__name__)
+
+
+schema_fields = [
+    {
+        "name": "earthquake_id",
+        "type": "STRING",
+        "mode": "REQUIRED",
+    },
+    {
+        "name": "position",
+        "type": "GEOGRAPHY",
+        "mode": "REQUIRED",
+    },
+    {
+        "name": "depth",
+        "type": "FLOAT",
+        "mode": "REQUIRED",
+    },
+    {
+        "name": "magnitude",
+        "type": "FLOAT",
+        "mode": "REQUIRED",
+    },
+    {
+        "name": "time",
+        "type": "TIMESTAMP",
+        "mode": "REQUIRED",
+    },
+    {
+        "name": "alert",
+        "type": "STRING",
+        "mode": "NULLABLE",
+    },
+    {
+        "name": "significance",
+        "type": "INTEGER",
+        "mode": "REQUIRED",
+    },
+]
 
 # pyright: reportOptionalMemberAccess=false
 
@@ -57,7 +100,6 @@ def download_and_export_to_gcs(
 @task()
 def import_to_bigquery(table_name: str, path: ObjectStoragePath):
     import json
-    from datetime import datetime
 
     hook = BigQueryHook()
     client = hook.get_client()
@@ -103,35 +145,7 @@ def import_to_bigquery(table_name: str, path: ObjectStoragePath):
     if errors == []:
         logger.info("New rows have been added.")
     else:
-        logger.error("Encountered errors while inserting rows: %s", errors)
-
-    assert errors == []
-
-
-@task
-def create_temp_table():
-    from google.cloud import bigquery
-
-    hook = BigQueryHook()
-    client = hook.get_client()
-
-    table_prefix = "earthquake.earthquake_staging_"
-    table_name = table_prefix + uuid.uuid4().hex
-    query_create_table = f"""
-    CREATE TABLE `{table_name}`
-    LIKE earthquake.earthquake
-    OPTIONS(expiration_timestamp = @expiration)
-    """
-    job_config = bigquery.QueryJobConfig(
-        query_parameters=[
-            bigquery.ScalarQueryParameter(
-                "expiration", "TIMESTAMP", datetime.now() + timedelta(days=2)
-            ),
-        ]
-    )
-
-    client.query_and_wait(query_create_table, job_config=job_config)
-    return table_name
+        raise RuntimeError(errors)
 
 
 @dag(
@@ -142,23 +156,51 @@ def create_temp_table():
     tags=["earthquake"],
 )
 def get_earthquake_data():
-    temp_table = create_temp_table()
+    temp_table = BigQueryCreateEmptyTableOperator(
+        task_id="create_temp_table",
+        project_id=os.environ["GCP_PROJECT_NAME"],
+        dataset_id="earthquake",
+        table_id="earthquake_staging_" + uuid.uuid4().hex,
+        schema_fields=schema_fields,
+    )
+
+    @task
+    def get_temp_table_name(bq_table):
+        return "%s.%s.%s" % (
+            bq_table["project_id"],
+            bq_table["dataset_id"],
+            bq_table["table_id"],
+        )
+
+    tmp_tbl_name = get_temp_table_name(XComArg(temp_table, "bigquery_table"))
+
+    delete_temp_table = BigQueryDeleteTableOperator(
+        task_id="delete_temp_table", deletion_dataset_table=tmp_tbl_name
+    )
+
+    merge_query = f"""
+        MERGE INTO `{os.environ["GCP_PROJECT_NAME"]}.earthquake.earthquake` AS target
+        USING {tmp_tbl_name} AS source
+        ON target.earthquake_id = source.earthquake_id
+        AND target.time = source.time
+        WHEN NOT MATCHED THEN
+          INSERT (earthquake_id, position, depth, magnitude, time, alert, significance)
+          VALUES (source.earthquake_id, source.position, source.depth, source.magnitude, source.time, source.alert, source.significance);
+    """
     merge_from_temp = BigQueryInsertJobOperator(
         task_id="merge_from_temp",
-        configuration={
-            "query": {
-                "query": "{% include 'sql/insert_earthquake.sql' %}",
-                "useLegacySql": False,
-                "priority": "BATCH",
-            }
-        },
+        configuration={"query": {"query": merge_query, "useLegacySql": False}},
     )
 
     downloaded_data_path = download_and_export_to_gcs()
     filled_temp_table = import_to_bigquery(
-        table_name=temp_table, path=downloaded_data_path
+        table_name=tmp_tbl_name, path=downloaded_data_path
     )
-    filled_temp_table >> merge_from_temp
+    (
+        filled_temp_table
+        >> merge_from_temp
+        >> delete_temp_table.as_teardown(setups=temp_table)
+    )
 
 
 get_earthquake_data()
