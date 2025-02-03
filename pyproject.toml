@@ -15,5 +15,6 @@ dev = [
 ]
 
 [tool.pyright]
+exclude = ["superset"]
 reportUnusedCallResult = false
 reportExplicitAny = false
