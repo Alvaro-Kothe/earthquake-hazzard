@@ -29,7 +29,7 @@ The schema for the earthquake data is defined in [`earthquakes_schema.json`](/bi
 
 ## Data Pipeline
 
-<!-- TODO: Add a flowchart illustrating the pipeline with tool symbols -->
+![earthquake-hazard-pipeline drawio](https://github.com/user-attachments/assets/59541657-ae36-414d-9a06-89e5dcfee9fa)
 
 The pipeline runs daily on a Google Cloud Compute instance with Fedora CoreOS.
 The instance starts at **00:00 UTC** and shuts down at **01:45 UTC**.
