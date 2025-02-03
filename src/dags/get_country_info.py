@@ -170,7 +170,7 @@ def fetch_country_data(row, ti=None):
         }
     except requests.exceptions.RequestException as e:
         # HACK: because of setup and teardown "trigger rule must be ALL_SUCCESS", I can't fail or skip on this error.
-        logger.warn(
+        logger.warning(
             "Request error while getting geolocation for (%s, %s): %s",
             latitude,
             longitude,
