@@ -1,38 +1,60 @@
-# CoreOS
+# CoreOS Cloud Setup
 
-## Startup scripts
+This document describes how to configure the cloud virtual machine (VM) running Fedora CoreOS.
 
-The VM on the cloud running on the cloud uses [CoreOS](https://docs.fedoraproject.org/en-US/fedora-coreos/).
+## Startup Scripts
 
-The startup scripts are defined using `ignition` and imported in Google Cloud with `metadata.user-data` using `terraform`.
+The VM uses [Fedora CoreOS](https://docs.fedoraproject.org/en-US/fedora-coreos/) as its operating system.
+Startup scripts are defined using the `Ignition` configuration format
+and imported into Google Cloud via the `metadata.user-data` field using Terraform.
 
-The configuration is first written in [`butane`](https://coreos.github.io/butane/) and then converted to `ignition`.
-To convert a butane file run:
+The configuration is authored in [Butane](https://coreos.github.io/butane/),
+then converted to an Ignition file.
+To perform the conversion, run:
 
-```
+```bash
 podman run --interactive --rm quay.io/coreos/butane:release \
-       --pretty --strict < path/to/my/butane/file.bu > path/to/my/ignition/file.ign
+       --pretty --strict < path/to/your/file.bu > path/to/your/file.ign
 ```
 
-## Cloning files
+## Cloning the Repository
 
-I use `git clone` to import the repository files into the virutal machine (VM).
-I login into the VM forwarding my ssh-agent with:
+To import the repository files into the VM, use `git clone` over SSH. Follow these steps:
 
-```
-gcloud compute ssh core@my-vm -- -A
-```
+1. **SSH into the VM**
 
-Then I clone this repository with `git clone` using `ssh`.
+   Forward your SSH agent by running:
 
-After cloning, make sure to create the `.env` file with the correct values.
-The path to the GCP private key is not needed.
+   ```bash
+   gcloud compute ssh core@my-vm -- -A
+   ```
 
-## Executing the container
+2. **Clone the Repository**
 
-The [`ignition` script](/cloud-startup/docker-compose.ign) ensures the installation of `docker-compose`.
-Then, inside the container, start the services with
+   Clone the repository using SSH:
 
-```
-sudo /opt/bin/docker-compose up -d
-```
+   ```bash
+   git clone git@github.com:<my-username>/<my-repository> earthquake
+   ```
+
+   This will create an `earthquake` directory containing your project files.
+
+3. **Configure Environment Variables**
+
+   After cloning, create the `.env` file with the correct configuration values.
+   Note that the path to the GCP private key is not required on the VM.
+
+4. **Restart the Service (if needed)**
+
+   If this is the first time you are setting up the `earthquake` directory,
+   restart the machine or the systemd service.
+   To restart the service, run:
+
+   ```bash
+   sudo systemctl restart earthquake
+   ```
+
+## Executing the Container
+
+The systemd service, defined in the [cloud-startup](/cloud-startup/docker-compose.bu) file,
+automatically starts the containers and runs the workflows when the VM boots up.

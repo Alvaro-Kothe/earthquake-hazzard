@@ -1,93 +1,149 @@
 # Earthquake Hazards Dashboard
 
-This project creates a pipeline using the [USGS earthquake api](https://www.usgs.gov/programs/earthquake-hazards) to deliver it's data to the Cloud to create a Dashboard to visualize the earthquake data across the world.
+This project implements a data pipeline using the [USGS Earthquake API](https://www.usgs.gov/programs/earthquake-hazards) to
+ingest, process, and visualize global earthquake data in a dashboard.
 
-## Table Streucture
+## Dashboard Components
 
-The table schema with the earthquake information is defined in [`earthquakes.json`](/bigquery/earthquakes_schema.json).
-This table is partitioned daily and clustered by country and alert, defined in [`main.tf`](/main.tf).
+<!-- TODO: Add images or a GIF demonstrating the dashboard's interactivity -->
 
-## Setup Environment
+The dashboard consists of three primary visualization components:
 
-### Setup the cloud
+- **Earthquake Map**: Displays the geographical locations where earthquakes occurred.
+- **Time Series Plots**: Two separate plots showing the average earthquake magnitude by country and continent over time.
+- **Pie Charts**: Visualizes the distribution of earthquakes by magnitude category, country, and continent.
 
-You can configure the environment for the cloud through terraform and environment variables.
-Firstly, create the `.env` file from `.env.example`:
+## Data Sources
 
-```
+- **Earthquake Data**: Obtained from the [USGS Earthquake Hazards API](https://www.usgs.gov/programs/earthquake-hazards).
+- **Geolocation Data**: Countries and continents are assigned using reverse geolocation from the [Nominatim API](https://nominatim.openstreetmap.org/ui/search.html).
+
+## Observations
+
+- Due to the data source, there is a notable concentration of recorded earthquakes in the United States and nearby regions.
+- Continents were identified based on the country information retrieved. If the Nominatim API failed to resolve a country, the corresponding continent was left unassigned.
+
+## Table Structure
+
+The schema for the earthquake data is defined in [`earthquakes_schema.json`](/bigquery/earthquakes_schema.json). The table is partitioned daily and clustered by `continent`, `country`, and `alert`, as specified in [`main.tf`](/main.tf).
+
+## Data Pipeline
+
+<!-- TODO: Add a flowchart illustrating the pipeline with tool symbols -->
+
+The pipeline runs daily on a Google Cloud Compute instance with Fedora CoreOS.
+The instance starts at **00:00 UTC** and shuts down at **01:45 UTC**.
+While active, a systemd service defined in [`cloud-startup`](/cloud-startup/docker-compose.bu) starts the required containers and workflows.
+
+The workflows, implemented as Apache Airflow DAGs, are located in the [`src/dags`](/src/dags) directory. The main DAGs are:
+
+1. **[`get_earthquake_data.py`](/src/dags/get_earthquake_data.py) (ELT - Extract, Load, Transform)**:
+   - Fetches data from the USGS API.
+   - Stores the `geojson` raw data in a Google Cloud Storage data lake.
+   - Processes and loads cleaned data into BigQuery.
+2. **[`get_country_info.py`](/src/dags/get_country_info.py) (Enhancement)**:
+   - Uses the Nominatim API to determine the country of each earthquake event.
+3. **[`generate_summary_tables.py`](/src/dags/generate_summary_tables.py) (Transform & Aggregate)**:
+   - Uses `dbt` to generate precomputed summary statistics for dashboard visualization.
+   - The transformation logic is implemented in [`earthquake_analysis`](/src/dags/dbt/earthquake_analysis).
+
+## Local Environment Setup
+
+### Cloud Infrastructure Setup
+
+The cloud environment is provisioned using Terraform.
+Start by creating an `.env` file from the example:
+
+```sh
 cp .env.example .env
 ```
 
-Then, setup the cloud with terraform:
+Then, initialize and apply the Terraform configuration:
 
-```
+```sh
 terraform init
 terraform plan
 terraform apply
 ```
 
-Finally, fill the `.env` file with the correct values.
-The cloud information you get from terraform using `terraform output`.
-The key to be used for airflow you get with this command:
+Next, update the `.env` file with the generated cloud information.
+Retrieve the Airflow service account key with:
 
+```sh
+terraform output -raw airflow_gcs_key | base64 -d > /path/to/your/private/key.json
 ```
-terraform output -raw airflow_gcs_key | base64 -d
-```
 
-To configure the VM look at [cloud-setup.md](/docs/cloud-setup.md).
+Set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable in `.env` to the key file path.
 
-### Run the Airflow service
+### Compute Instance Configuration
 
-There are two `docker-compose` files.
-The first has the secret blocks omitted to use the Google cloud's provided secrets.
-The second simply add the secrets for local development.
+Follow the instructions in [`cloud-setup.md`](/docs/cloud-setup.md) to configure the VM.
 
-In the production environment, start the services with
+### Running the Airflow Service
 
-```
+The project includes two `docker-compose` files:
+
+- **`docker-compose.yaml`**: Used for the compute engine.
+- **`docker-compose-dev.yaml`**: Adds local secrets for development.
+
+To start Airflow in production:
+
+```sh
 docker compose up
 ```
 
-In the development environment starts it with
+To start Airflow in development:
 
-```
+```sh
 docker-compose -f docker-compose.yaml -f docker-compose-dev.yaml up
 ```
 
-Be sure to setup the correct environment variables.
-Also, be sure to provide the path for your credentials, or from the service.
+Ensure environment variables are correctly configured and credentials are provided in both environments.
 
-### Setup Superset
+### Apache Superset Setup
 
-Clone the Superset repo
+Clone the Superset repository:
 
-```
+```sh
 git submodule update --init --recursive
 ```
 
-Start Superset
+Start Superset:
 
-```
+```sh
 docker compose -f ./superset/docker-compose-image-tag.yml up
 ```
 
-## Used Tools
+To create the dashboard:
 
-- [Earthquake Hazards Program API](https://earthquake.usgs.gov): Earthquake information across the world.
-- [Nominatim API](https://nominatim.openstreetmap.org/ui/search.html): Reverse Geocoding
-- [Superset](https://superset.apache.org/): BI
-- [mapbox](https://www.mapbox.com/): map
+1. [Connect Superset to BigQuery](https://superset.apache.org/docs/configuration/databases/#google-bigquery).
+2. Add the dataset to Superset.
+3. Enable maps by setting your [MAPBOX_API_KEY](https://superset.apache.org/docs/faq/#why-is-the-map-not-visible-in-the-geospatial-visualization).
 
-The continent lookup was taken from <https://gist.github.com/stevewithington/20a69c0b6d2ff846ea5d35e5fc47f26c>.
+## Tools & Technologies
+
+- **[Apache Airflow](https://airflow.apache.org/)**: Workflow orchestration.
+- **[Apache Superset](https://superset.apache.org/)**: Business Intelligence & data visualization.
+- **[Docker](https://www.docker.com/)**: Containerization.
+- **[Fedora CoreOS](https://fedoraproject.org/coreos/)**: Cloud-optimized OS.
+- **[Google Cloud Platform](https://cloud.google.com/)**: Cloud services.
+- **[Mapbox](https://www.mapbox.com/)**: Geospatial visualization.
+- **[Nominatim API](https://nominatim.openstreetmap.org/ui/search.html)**: Reverse geocoding for country lookup.
+- **[Terraform](https://www.terraform.io/)**: Infrastructure as code.
+- **[USGS Earthquake API](https://earthquake.usgs.gov)**: Earthquake data source.
+- **[dbt](https://docs.getdbt.com/)**: Data transformation.
+
+The continent lookup was sourced from [this dataset](https://gist.github.com/stevewithington/20a69c0b6d2ff846ea5d35e5fc47f26c) and converted into [`country_to_continent.json`](/src/dags/include/country_to_continent.json).
 
 ## TODO
 
-- [x] Use terraform/opentofu to setup a vm on the cloud
-- [x] Choose a cloud provider: GCP, Azure, AWS
-- [x] Choose a dataset / datastream api
-- [x] Setup an orchestrator for an ETL pipeline
-  - [x] The orchestrator needs to run on the cloud
-  - [x] The orchestrator needs to move the data to a data warehouse
-- [x] Perform transformations on the data (use dbt or spark)
-- [ ] Add dbt to the workflow
-- [x] Use the transformed data to create a dashboard.
+- [x] Use Terraform/OpenTofu to provision a cloud VM.
+- [x] Choose a cloud provider (GCP, Azure, AWS).
+- [x] Select a dataset/data stream API.
+- [x] Set up an orchestrator for the ETL pipeline.
+  - [x] Run the orchestrator in the cloud.
+  - [x] Load data into a data warehouse.
+- [x] Perform transformations on the data (dbt or Spark).
+- [x] Integrate dbt into the workflow.
+- [x] Build a dashboard from the transformed data.
+- [ ] Deploy the pipeline on Kubernetes in the cloud.
