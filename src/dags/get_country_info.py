@@ -3,9 +3,10 @@ import logging
 import math
 import os
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import timedelta
 from uuid import uuid4
 
+import pendulum
 from airflow.decorators import dag, task
 from airflow.models.xcom_arg import XComArg
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
@@ -195,10 +196,18 @@ def insert_country_data(table_name, data: list[dict[str, str]]):
     client.insert_rows_json(table_name, data)
 
 
+default_args = {
+    "start_date": pendulum.datetime(2025, 1, 1, tz="UTC"),
+    "depends_on_past": False,
+    "retries": 2,
+    "retry_delay": timedelta(minutes=1),
+}
+
+
 @dag(
+    default_args=default_args,
     catchup=False,
     schedule="@daily",
-    start_date=datetime(2025, 1, 1),
     max_active_runs=1,
 )
 def get_country_info():
