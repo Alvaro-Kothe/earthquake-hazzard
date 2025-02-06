@@ -3,14 +3,15 @@
 """
 
 import os
+import pathlib
 
 from cosmos import DbtDag, ExecutionConfig, ProfileConfig, ProjectConfig
 from cosmos.config import ProfileConfig
 from cosmos.profiles.bigquery import GoogleCloudOauthProfileMapping
 from pendulum import datetime
 
-DBT_PROJECT_PATH = f"{os.environ["AIRFLOW_HOME"]}/dags/dbt/earthquake_analysis"
-DBT_EXECUTABLE_PATH = f"{os.environ["AIRFLOW_HOME"]}/virtualvenv/dbt_venv/bin/dbt"
+DBT_PROJECT_PATH = pathlib.Path(__file__).parent / "dbt/earthquake_analysis"
+DBT_EXECUTABLE_PATH = f"{os.environ['AIRFLOW_HOME']}/virtualvenv/dbt_venv/bin/dbt"
 GCP_PROJECT_NAME = os.environ["GCP_PROJECT_NAME"]
 
 profile_config = ProfileConfig(
