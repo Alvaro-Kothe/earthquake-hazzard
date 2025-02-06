@@ -15,6 +15,7 @@ from airflow.providers.google.cloud.operators.bigquery import (
     BigQueryDeleteTableOperator,
     BigQueryInsertJobOperator,
 )
+from datetime import UTC
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +89,7 @@ def download_and_export_to_gcs(
     response.raise_for_status()
 
     logger.info("Downloaded Data")
-    fname = f"earthquake_{data_interval_start.format("YYYYMMDD")}-{data_interval_end.format("YYYYMMDD")}.json"
+    fname = f"earthquake_{data_interval_start.format('YYYYMMDD')}-{data_interval_end.format('YYYYMMDD')}.json"
     path = base_path / fname
 
     path.write_bytes(response.content)
@@ -114,7 +115,7 @@ def import_to_bigquery(table_name: str, path: ObjectStoragePath):
         lon, lat, depth = feature["geometry"]["coordinates"]
         properties = feature["properties"]
         magnitude = properties["mag"]
-        time = datetime.utcfromtimestamp(properties["time"] / 1000.0)
+        time = datetime.fromtimestamp(properties["time"] / 1000.0, UTC)
         alert = properties["alert"]
         significance = properties["sig"]
 
