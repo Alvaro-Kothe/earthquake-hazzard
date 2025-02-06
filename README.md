@@ -27,6 +27,8 @@ The dashboard consists of three primary visualization components:
 ## Observations
 
 - Due to the data source, there is a notable concentration of recorded earthquakes in the United States and nearby regions.
+- USGS is capable of detecting very small earthquakes in the USA region, which distort the magnitude downwards for the country USA and continent North America,
+  which ends up differing greatly from other regions.
 - Continents were identified based on the country information retrieved. If the Nominatim API failed to resolve a country, the corresponding continent was left unassigned.
 
 ## Table Structure
