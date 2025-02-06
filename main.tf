@@ -62,7 +62,9 @@ resource "google_bigquery_table" "default" {
     field = "time"
   }
 
-  clustering = ["continent", "country", "alert"]
+  # NOTE: clustering columns with high cardinality is good
+  # https://cloud.google.com/bigquery/docs/clustered-tables#when_to_use_clustering
+  clustering = ["earthquake_id", "continent", "country"]
 
   schema = file("bigquery/earthquakes_schema.json")
 }

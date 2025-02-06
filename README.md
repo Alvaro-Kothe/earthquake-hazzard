@@ -25,7 +25,8 @@ The dashboard consists of three primary visualization components:
 
 ## Table Structure
 
-The schema for the earthquake data is defined in [`earthquakes_schema.json`](/bigquery/earthquakes_schema.json). The table is partitioned daily and clustered by `continent`, `country`, and `alert`, as specified in [`main.tf`](/main.tf).
+The schema for the earthquake data is defined in [`earthquakes_schema.json`](/bigquery/earthquakes_schema.json).
+The table is partitioned daily and clustered by `earthquake_id`, `continent` and `country`, as specified in [`main.tf`](/main.tf).
 
 ## Data Pipeline
 
