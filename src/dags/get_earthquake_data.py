@@ -119,7 +119,7 @@ def import_to_bigquery(table_name: str, path: ObjectStoragePath):
         significance = properties["sig"]
 
         logger.info(
-            "going to insert %s, POINT(%.3f %.3f), %.2f, %s, %s, %d",
+            "going to insert %s, POINT(%.3f %.3f), %.2f, %s, %s, %s, %d",
             id,
             lon,
             lat,
