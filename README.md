@@ -34,6 +34,10 @@ The dashboard consists of three primary visualization components:
 The schema for the earthquake data is defined in [`earthquakes_schema.json`](/bigquery/earthquakes_schema.json).
 The table is partitioned daily and clustered by `earthquake_id`, `continent` and `country`, as specified in [`main.tf`](/main.tf).
 
+The daily partition on the earthquake events helps building the incremental table for the time series plots.
+The cluster on the `earthquake_id` improves query performance to update the `country` and `continent`.
+Finally, clustering by `country` and `continent` improves query performance for aggregation queries used for the dashboard.
+
 ## Data Pipeline
 
 ![earthquake-hazard-pipeline drawio](https://github.com/user-attachments/assets/59541657-ae36-414d-9a06-89e5dcfee9fa)
