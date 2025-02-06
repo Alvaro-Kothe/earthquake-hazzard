@@ -3,6 +3,10 @@
 This project implements a data pipeline using the [USGS Earthquake API](https://www.usgs.gov/programs/earthquake-hazards) to
 ingest, process, and visualize global earthquake data in a dashboard.
 
+The dashboard aids to visualize where the earthquakes occurs around the globe,
+countries and continents with the most severe earthquakes,
+and how the earthquakes magnitudes changes over time.
+
 ## Dashboard Components
 
 <!-- TODO: Add images or a GIF demonstrating the dashboard's interactivity -->
