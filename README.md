@@ -16,10 +16,10 @@ The dashboard consists of three primary visualization components:
 - **Earthquake Map**: Displays the geographical locations where earthquakes occurred.
 - **Time Series Plots**: Two separate plots showing the average earthquake magnitude by country and continent over time.
   - **NOTE:** Since the data for this plots is aggregated by continent and country,
-    the average magnitude for the $i$th continent is defined as the average of the average of the earthquake magnitude weighted by the number of earthquakes:
+    the average magnitude for the $i$-th continent is defined as the average of the average of the earthquake magnitude weighted by the number of earthquakes:
     $$\frac{\sum_{j=1}^{n_i} \bar x_{ij} m_{ij}}{\sum_{j=1}^{n_i} m_{ij}},$$
     where $n_{i}$ is the number of countries,
-    $\bar x_{ij}$ is the average magnitude for the $j$th country in the $i$th continent
+    $\bar x_{ij}$ is the average magnitude for the $j$-th country in the $i$-th continent
     and $m_{ij}$ is the number of earthquakes.
 - **Pie Charts**: Visualizes the distribution of earthquakes by magnitude category, country, and continent.
 
