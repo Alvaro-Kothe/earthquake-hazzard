@@ -1,13 +1,12 @@
-import json
 import logging
 import os
 from datetime import timedelta
 from uuid import uuid4
-import pathlib
 
-from airflow.utils.helpers import chain
 import pendulum
 from airflow.decorators import dag, task
+from airflow.io.path import ObjectStoragePath
+from airflow.models import Variable
 from airflow.models.xcom_arg import XComArg
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from airflow.providers.google.cloud.operators.bigquery import (
@@ -16,14 +15,46 @@ from airflow.providers.google.cloud.operators.bigquery import (
     BigQueryInsertJobOperator,
 )
 from airflow.sensors.base import PokeReturnValue
+from airflow.utils.helpers import chain
 
 logger = logging.getLogger(__name__)
 
 UNKNOWN = "Unknown"
 
 
+@task(max_active_tis_per_dag=1)
+def download_shapefile_to_gcs(file_path: ObjectStoragePath):
+    import tempfile
+
+    import requests
+
+    if file_path.exists():
+        logger.info("%s already exists", file_path)
+        return
+
+    data_url = (
+        "https://naciscdn.org/naturalearth/110m/cultural/ne_110m_admin_0_countries.zip"
+    )
+
+    with requests.get(data_url, stream=True) as response:
+        response.raise_for_status()
+        with tempfile.TemporaryFile() as shape_zip:
+            for chunk in response.iter_content(chunk_size=1024):
+                shape_zip.write(chunk)
+
+            shape_zip.seek(0)  # Move pointer to start of buffer
+
+            file_path.write_bytes(shape_zip.read())
+
+            logger.info(
+                "Written %.2f KiB into %s", shape_zip.tell() / (1024.0), file_path
+            )
+
+
 def reverse_geocode(
-    points: list[tuple[float, float]], max_distance=10000
+    points: list[tuple[float, float]],
+    shapefile_path: ObjectStoragePath,
+    max_distance=10000,
 ) -> list[list[str]]:
     """
     Perform a proximity-based reverse geocode.
@@ -35,10 +66,10 @@ def reverse_geocode(
     import numpy as np
     from shapely.geometry import Point
 
-    filepath = pathlib.Path(__file__).parent / "include/ne_110m_admin_0_countries.shp"
-    world = gpd.read_file(filepath, columns=["NAME", "CONTINENT"])
+    with shapefile_path.open("rb") as shapefile:
+        world = gpd.read_file(shapefile, columns=["NAME", "CONTINENT"])
     gdf_points = gpd.GeoDataFrame(geometry=[Point(lon, lat) for lon, lat in points])
-    gdf_points.crs = "EPSG:4326"
+    gdf_points.set_crs(4326, inplace=True)
 
     joined = gpd.sjoin_nearest(
         gdf_points.to_crs(3857),
@@ -79,7 +110,7 @@ def check_country_is_null() -> PokeReturnValue:
 
 
 @task()
-def get_country(table_name, rows):
+def get_country(table_name, rows, shapefile_path):
     """Insert into temporary table the country and continent data"""
     hook = BigQueryHook()
     client = hook.get_client()
@@ -94,12 +125,18 @@ def get_country(table_name, rows):
         )
         points.append((longitude, latitude))
     # Assign country for earthquakes up to 300km from the border
-    countries_and_continents = reverse_geocode(points, max_distance=300000)
+    countries_and_continents = reverse_geocode(
+        points, shapefile_path=shapefile_path, max_distance=300000
+    )
     for row, cc in zip(rows_to_insert, countries_and_continents):
         country, continent = cc
         row.update(country=country or UNKNOWN, continent=continent)
 
-    client.insert_rows_json(table_name, rows_to_insert)
+    errors = client.insert_rows_json(table_name, rows_to_insert)
+    if errors == []:
+        logger.info("New rows have been added.")
+    else:
+        raise RuntimeError(errors)
 
 
 default_args = {
@@ -118,6 +155,11 @@ default_args = {
 )
 def get_country_info():
     needs_to_insert = check_country_is_null()
+
+    shapefile_path = ObjectStoragePath(
+        f"gs://{Variable.get('gcp_bucket')}/shapefiles/ne_110m_admin_0_countries.zip",
+        conn_id="google_cloud_default",
+    )
 
     create_temp_table = BigQueryCreateEmptyTableOperator(
         task_id="create_temp_table",
@@ -161,8 +203,11 @@ def get_country_info():
     )
 
     chain(
+        download_shapefile_to_gcs(shapefile_path),
         create_temp_table,
-        get_country(table_name=tmp_tbl_name, rows=needs_to_insert),
+        get_country(
+            table_name=tmp_tbl_name, rows=needs_to_insert, shapefile_path=shapefile_path
+        ),
         merge_countries_and_continents,
         delete_temp_table.as_teardown(setups=create_temp_table),
     )
