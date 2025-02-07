@@ -1,11 +1,11 @@
 import json
 import logging
-import math
 import os
-import sqlite3
 from datetime import timedelta
 from uuid import uuid4
+import pathlib
 
+from airflow.utils.helpers import chain
 import pendulum
 from airflow.decorators import dag, task
 from airflow.models.xcom_arg import XComArg
@@ -21,72 +21,35 @@ logger = logging.getLogger(__name__)
 
 UNKNOWN = "Unknown"
 
-DB_PATH = "/data/geolocation_cache.db"
 
+def reverse_geocode(
+    points: list[tuple[float, float]], max_distance=10000
+) -> list[list[str]]:
+    """
+    Perform a proximity-based reverse geocode.
 
-@task
-def setup_cache():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS geolocation_cache (
-            latitude REAL,
-            longitude REAL,
-            country TEXT,
-            continent TEXT,
-            PRIMARY KEY (latitude, longitude)
-        )
-    """)
-    conn.commit()
-    conn.close()
+    :param max_distance: Maximum distance (in meters) for a valid match
+    :return: List of list of (country, continent).
+    """
+    import geopandas as gpd
+    import numpy as np
+    from shapely.geometry import Point
 
+    filepath = pathlib.Path(__file__).parent / "include/ne_110m_admin_0_countries.shp"
+    world = gpd.read_file(filepath, columns=["NAME", "CONTINENT"])
+    world.crs = "EPSG:4326"
+    gdf_points = gpd.GeoDataFrame(geometry=[Point(lon, lat) for lon, lat in points])
+    gdf_points.crs = "EPSG:4326"
 
-# https://rosettacode.org/wiki/Haversine_formula#Python
-def haversine_distance(lat1, lon1, lat2, lon2):
-    earth_radius_km = 6372.8
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    lat1 = math.radians(lat1)
-    lat2 = math.radians(lat2)
-    a = (
-        math.sin(dlat / 2) ** 2
-        + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-    )
-    c = 2 * math.asin(math.sqrt(a))
-    return earth_radius_km * c
-
-
-def get_cached_location(latitude, longitude, max_distance_km=1):
-    conn = sqlite3.connect(DB_PATH)
-    conn.create_function("haversine", 4, haversine_distance, deterministic=True)
-    point = (latitude, longitude)
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT country, continent
-        FROM geolocation_cache
-        WHERE haversine(latitude, longitude, ?, ?) <= ?
-        ORDER BY haversine(latitude, longitude, ?, ?) ASC
-        LIMIT 1
-        """,
-        (*point, max_distance_km, *point),
+    joined = gpd.sjoin_nearest(
+        gdf_points.to_crs(3857),
+        world.to_crs(3857),
+        max_distance=max_distance,
+        distance_col="distance",
+        how="left",
     )
 
-    result = cursor.fetchone()
-    conn.close()
-
-    return result
-
-
-def save_to_cache(latitude, longitude, country, continent):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT OR REPLACE INTO geolocation_cache (latitude, longitude, country, continent) VALUES (?, ?, ?, ?)",
-        (latitude, longitude, country, continent),
-    )
-    conn.commit()
-    conn.close()
+    return joined[["NAME", "CONTINENT"]].replace({np.nan: None}).values.tolist()
 
 
 @task.sensor(poke_interval=120, timeout=60 * 6, mode="reschedule")
@@ -116,84 +79,28 @@ def check_country_is_null() -> PokeReturnValue:
     return PokeReturnValue(is_done=condition_met, xcom_value=op_ret_value)
 
 
-@task(
-    retries=3,
-    retry_delay=timedelta(seconds=1),
-    retry_exponential_backoff=True,
-    max_retry_delay=timedelta(seconds=30),
-)
-def fetch_country_data(row, ti=None):
-    import pathlib
-
-    import requests
-
-    earthquake_id, time, longitude, latitude = row
-
-    cached_result = get_cached_location(latitude, longitude)
-    if cached_result:
-        country, continent = cached_result
-        logger.info("Cache hit for (%s, %s): %s", latitude, longitude, country)
-        return {
-            "earthquake_id": earthquake_id,
-            "time": time.isoformat(),
-            "country": country,
-            "continent": continent,
-        }
-
-    ctc_file = pathlib.Path(__file__).parent / "include/country_to_continent.json"
-    country_to_continent = json.loads(ctc_file.read_bytes())
-
-    url = "https://nominatim.openstreetmap.org/reverse"
-    headers = {"User-Agent": "earthquake-dashboard/1.0", "Accept-Language": "en"}
-    params = {
-        "lat": latitude,
-        "lon": longitude,
-        "format": "jsonv2",
-        "zoom": 3,  # country level
-        "addressdetails": 1,
-        "extratags": 1,  # contry code
-    }
-    try:
-        response = requests.get(url, params, headers=headers, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-
-        country = data.get("address", {}).get("country", UNKNOWN)
-        country_id_str = data.get("extratags", {}).get("ISO3166-1:numeric")
-        continent = country_to_continent.get(country_id_str)
-
-        save_to_cache(latitude, longitude, country, continent)
-        return {
-            "earthquake_id": earthquake_id,
-            "time": time.isoformat(),
-            "country": country,
-            "continent": continent,
-        }
-    except requests.exceptions.RequestException as e:
-        # HACK: because of setup and teardown "trigger rule must be ALL_SUCCESS", I can't fail or skip on this error.
-        logger.warning(
-            "Request error while getting geolocation for (%s, %s): %s",
-            latitude,
-            longitude,
-            e,
-        )
-        if ti.try_number == ti.max_tries:
-            return
-        else:
-            raise
-    except Exception as e:
-        logger.error(
-            "Error getting geolocation for (%s, %s): %s", latitude, longitude, e
-        )
-        raise
-
-
 @task()
-def insert_country_data(table_name, data: list[dict[str, str]]):
+def get_country(table_name, rows):
+    """Insert into temporary table the country and continent data"""
     hook = BigQueryHook()
     client = hook.get_client()
+    rows_to_insert: list[dict] = []
+    points: list[tuple[float]] = []
+    for earthquake_id, time, longitude, latitude in rows:
+        rows_to_insert.append(
+            {
+                "earthquake_id": earthquake_id,
+                "time": time.isoformat(),
+            }
+        )
+        points.append((longitude, latitude))
+    # Assign country for earthquakes up to 300km from the border
+    countries_and_continents = reverse_geocode(points, max_distance=300000)
+    for row, cc in zip(rows_to_insert, countries_and_continents):
+        country, continent = cc
+        row.update(country=country or UNKNOWN, continent=continent)
 
-    client.insert_rows_json(table_name, data)
+    client.insert_rows_json(table_name, rows_to_insert)
 
 
 default_args = {
@@ -211,8 +118,6 @@ default_args = {
     max_active_runs=1,
 )
 def get_country_info():
-    create_lat_lon_lookup = setup_cache().as_setup()
-
     needs_to_insert = check_country_is_null()
 
     create_temp_table = BigQueryCreateEmptyTableOperator(
@@ -242,9 +147,6 @@ def get_country_info():
         task_id="delete_temp_table", deletion_dataset_table=tmp_tbl_name
     )
 
-    fetched_data = fetch_country_data.expand(row=needs_to_insert)
-    create_lat_lon_lookup >> fetched_data
-    temp_table_data = insert_country_data(table_name=tmp_tbl_name, data=fetched_data)
     merge_query = f"""
     MERGE INTO `earthquake.earthquake` AS target
     USING `{tmp_tbl_name}` AS source
@@ -259,11 +161,11 @@ def get_country_info():
         configuration={"query": {"query": merge_query, "useLegacySql": False}},
     )
 
-    (
-        create_temp_table
-        >> temp_table_data
-        >> merge_countries_and_continents
-        >> delete_temp_table.as_teardown(setups=create_temp_table)
+    chain(
+        create_temp_table,
+        get_country(table_name=tmp_tbl_name, rows=needs_to_insert),
+        merge_countries_and_continents,
+        delete_temp_table.as_teardown(setups=create_temp_table),
     )
 
 

@@ -26,14 +26,13 @@ The dashboard consists of three primary visualization components:
 ## Data Sources
 
 - **Earthquake Data**: Obtained from the [USGS Earthquake Hazards API](https://www.usgs.gov/programs/earthquake-hazards).
-- **Geolocation Data**: Countries and continents are assigned using reverse geolocation from the [Nominatim API](https://nominatim.openstreetmap.org/ui/search.html).
+- **Geolocation Data**: Countries and continents are assigned using reverse geolocation with [natural earth](https://www.naturalearthdata.com/).
 
 ## Observations
 
 - Due to the data source, there is a notable concentration of recorded earthquakes in the United States and nearby regions.
 - USGS is capable of detecting very small earthquakes in the USA region, which distort the magnitude downwards for the country USA and continent North America,
   which ends up differing greatly from other regions.
-- Continents were identified based on the country information retrieved. If the Nominatim API failed to resolve a country, the corresponding continent was left unassigned.
 
 ## Table Structure
 
@@ -45,6 +44,8 @@ The cluster on the `earthquake_id` improves query performance to update the `cou
 Finally, clustering by `country` and `continent` improves query performance for aggregation queries used for the dashboard.
 
 ## Data Pipeline
+
+<!-- TODO: remove nominatim from flowchart -->
 
 ![earthquake-hazard-pipeline drawio](https://github.com/user-attachments/assets/59541657-ae36-414d-9a06-89e5dcfee9fa)
 
@@ -59,12 +60,21 @@ The workflows, implemented as Apache Airflow DAGs, are located in the [`src/dags
    - Stores the `geojson` raw data in a Google Cloud Storage data lake.
    - Processes and loads cleaned data into BigQuery.
 2. **[`get_country_info.py`](/src/dags/get_country_info.py) (Enhancement)**:
-   - Uses the Nominatim API to determine the country of each earthquake event.
+   - Determine the country and continent of each earthquake event.
 3. **[`generate_summary_tables.py`](/src/dags/generate_summary_tables.py) (Transform & Aggregate)**:
    - Uses `dbt` to generate precomputed summary statistics for dashboard visualization.
    - The transformation logic is implemented in [`earthquake_analysis`](/src/dags/dbt/earthquake_analysis).
 
 ## Local Environment Setup
+
+### Download country boundaries
+
+To identify the country you need to download the natural earth cultural vectors into the `src/dags/include` directory.
+You can do that with the command:
+
+```sh
+make data
+```
 
 ### Cloud Infrastructure Setup
 
@@ -145,7 +155,6 @@ To create the dashboard:
 - **[Fedora CoreOS](https://fedoraproject.org/coreos/)**: Cloud-optimized OS.
 - **[Google Cloud Platform](https://cloud.google.com/)**: Cloud services.
 - **[Mapbox](https://www.mapbox.com/)**: Geospatial visualization.
-- **[Nominatim API](https://nominatim.openstreetmap.org/ui/search.html)**: Reverse geocoding for country lookup.
 - **[Terraform](https://www.terraform.io/)**: Infrastructure as code.
 - **[USGS Earthquake API](https://earthquake.usgs.gov)**: Earthquake data source.
 - **[dbt](https://docs.getdbt.com/)**: Data transformation.

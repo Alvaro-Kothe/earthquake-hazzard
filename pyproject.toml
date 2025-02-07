@@ -4,7 +4,11 @@ version = "0.0.1"
 description = "Data engineering pipeline to publish a dashboard about earthquakes across the world"
 readme = "README.md"
 requires-python = ">=3.8.1"
-dependencies = []
+dependencies = [
+    "geopandas>=0.13.2",
+    "pandas>=2.0.3",
+    "shapely>=2.0.6",
+]
 
 [dependency-groups]
 dev = [
@@ -16,7 +20,7 @@ dev = [
 ]
 
 [tool.pyright]
-exclude = ["superset"]
+include = ["src", "tests"]
 reportUnusedCallResult = false
 reportExplicitAny = false
 

@@ -1,6 +1,5 @@
 volumes:
   postgres-db-volume:
-  sqlite-db-volume:
 
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -79,7 +78,6 @@ x-airflow-common: &airflow-common
     - ${AIRFLOW_PROJ_DIR:-./src}/logs:/opt/airflow/logs:z
     - ${AIRFLOW_PROJ_DIR:-./src}/config:/opt/airflow/config:z
     - ${AIRFLOW_PROJ_DIR:-./src}/plugins:/opt/airflow/plugins:z
-    - sqlite-db-volume:/data
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on: &airflow-common-depends-on
     postgres:
@@ -215,4 +213,3 @@ services:
     user: "0:0"
     volumes:
       - ${AIRFLOW_PROJ_DIR:-./src}:/sources:z
-      - sqlite-db-volume:/data
