@@ -1,3 +1,7 @@
+import os
+
+os.environ["GCP_PROJECT_NAME"] = "test-project"
+
 from src.dags.get_country_info import reverse_geocode
 
 

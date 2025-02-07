@@ -37,7 +37,6 @@ def reverse_geocode(
 
     filepath = pathlib.Path(__file__).parent / "include/ne_110m_admin_0_countries.shp"
     world = gpd.read_file(filepath, columns=["NAME", "CONTINENT"])
-    world.crs = "EPSG:4326"
     gdf_points = gpd.GeoDataFrame(geometry=[Point(lon, lat) for lon, lat in points])
     gdf_points.crs = "EPSG:4326"
 
