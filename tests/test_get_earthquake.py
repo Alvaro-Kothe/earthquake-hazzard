@@ -72,6 +72,13 @@ def mock_object_storage_path_written():
         yield mock_path_instance
 
 
+@pytest.fixture
+def mock_reverse_geocode():
+    with patch("src.dags.get_earthquake_data.reverse_geocode") as mock:
+        mock.return_value = [["foo", "bar"]]
+        yield mock
+
+
 def test_download_and_export_to_gcs(
     mock_variable_get, mock_ObjectStoragePath, mock_requests_get
 ):
@@ -92,7 +99,7 @@ def test_download_and_export_to_gcs(
     )
     mock_variable_get.assert_called_once()
     mock_ObjectStoragePath.assert_called_once_with(
-        "gs://test-bucket/", conn_id="google_cloud_default"
+        "gs://test-bucket/earthquakes", conn_id="google_cloud_default"
     )
     mock_path.__truediv__.assert_called_once_with(expected_filename)
     mock_filepath = mock_path / expected_filename
@@ -100,12 +107,19 @@ def test_download_and_export_to_gcs(
     assert result == mock_filepath
 
 
-def test_import_to_bigquery_success(mock_bigquery_hook, mock_object_storage_path_written):
+def test_import_to_bigquery_success(
+    mock_bigquery_hook,
+    mock_object_storage_path_written,
+    mock_ObjectStoragePath,
+    mock_reverse_geocode,
+):
     table_name = "my-project.my-dataset.my-table"
 
     # Call the function directly, bypassing Airflow
     mock_bigquery_hook.insert_rows_json.return_value = []
-    import_to_bigquery.function(table_name, mock_object_storage_path_written)
+    import_to_bigquery.function(
+        table_name, mock_object_storage_path_written, mock_ObjectStoragePath
+    )
 
     # Expected data transformation
     expected_rows = [
@@ -117,6 +131,8 @@ def test_import_to_bigquery_success(mock_bigquery_hook, mock_object_storage_path
             "time": "2023-11-14T22:13:20+00:00",
             "alert": None,
             "significance": 1,
+            "country": "foo",
+            "continent": "bar",
         }
     ]
 
@@ -126,11 +142,15 @@ def test_import_to_bigquery_success(mock_bigquery_hook, mock_object_storage_path
     )
 
 
-def test_import_to_bigquery_failure(mock_bigquery_hook, mock_object_storage_path_written):
+def test_import_to_bigquery_failure(
+    mock_bigquery_hook, mock_object_storage_path_written, mock_ObjectStoragePath, mock_reverse_geocode
+):
     table_name = "earthquake_table"
     mock_bigquery_hook.insert_rows_json.return_value = [
         {"error": "some error"}
     ]  # Simulate failure
 
     with pytest.raises(RuntimeError, match="some error"):
-        import_to_bigquery.function(table_name, mock_object_storage_path_written)
+        import_to_bigquery.function(
+            table_name, mock_object_storage_path_written, mock_ObjectStoragePath
+        )
