@@ -32,9 +32,7 @@ def mock_requests_get():
     with patch("requests.get") as mock:  # Patch 'requests.get' globally
         mock_response = MagicMock()
         mock_response.content = b'{"features": []}'
-        mock_response.raise_for_status = (
-            MagicMock()
-        )  # Ensure `raise_for_status` does nothing
+        mock_response.raise_for_status = MagicMock()
         mock.return_value = mock_response
         yield mock
 
@@ -143,12 +141,15 @@ def test_import_to_bigquery_success(
 
 
 def test_import_to_bigquery_failure(
-    mock_bigquery_hook, mock_object_storage_path_written, mock_ObjectStoragePath, mock_reverse_geocode
+    mock_bigquery_hook,
+    mock_object_storage_path_written,
+    mock_ObjectStoragePath,
+    mock_reverse_geocode,
 ):
     table_name = "earthquake_table"
-    mock_bigquery_hook.insert_rows_json.return_value = [
-        {"error": "some error"}
-    ]  # Simulate failure
+
+    # Simulate failure
+    mock_bigquery_hook.insert_rows_json.return_value = [{"error": "some error"}]
 
     with pytest.raises(RuntimeError, match="some error"):
         import_to_bigquery.function(
