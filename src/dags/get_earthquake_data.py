@@ -1,11 +1,12 @@
 import logging
 import os
+import tempfile
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from airflow.utils.helpers import chain
 import pendulum
+import requests
 from airflow import XComArg
 from airflow.decorators import dag, task
 from airflow.io.path import ObjectStoragePath
@@ -16,8 +17,7 @@ from airflow.providers.google.cloud.operators.bigquery import (
     BigQueryDeleteTableOperator,
     BigQueryInsertJobOperator,
 )
-from datetime import UTC
-
+from airflow.utils.helpers import chain
 from shapely.geometry import Point
 from upath import UPath
 
@@ -26,60 +26,32 @@ logger = logging.getLogger(__name__)
 UNKNOWN = "Unknown"
 
 schema_fields = [
-    {
-        "name": "earthquake_id",
-        "type": "STRING",
-        "mode": "REQUIRED",
-    },
-    {
-        "name": "position",
-        "type": "GEOGRAPHY",
-        "mode": "REQUIRED",
-    },
-    {
-        "name": "depth",
-        "type": "FLOAT",
-        "mode": "REQUIRED",
-    },
-    {
-        "name": "magnitude",
-        "type": "FLOAT",
-        "mode": "REQUIRED",
-    },
-    {
-        "name": "time",
-        "type": "TIMESTAMP",
-        "mode": "REQUIRED",
-    },
-    {
-        "name": "alert",
-        "type": "STRING",
-        "mode": "NULLABLE",
-    },
-    {
-        "name": "significance",
-        "type": "INTEGER",
-        "mode": "REQUIRED",
-    },
-    {
-        "name": "country",
-        "type": "STRING",
-        "mode": "NULLABLE",
-    },
-    {
-        "name": "continent",
-        "type": "STRING",
-        "mode": "NULLABLE",
-    },
+    {"name": "earthquake_id", "type": "STRING", "mode": "REQUIRED"},
+    {"name": "position", "type": "GEOGRAPHY", "mode": "REQUIRED"},
+    {"name": "depth", "type": "FLOAT", "mode": "REQUIRED"},
+    {"name": "magnitude", "type": "FLOAT", "mode": "REQUIRED"},
+    {"name": "time", "type": "TIMESTAMP", "mode": "REQUIRED"},
+    {"name": "alert", "type": "STRING", "mode": "NULLABLE"},
+    {"name": "significance", "type": "INTEGER", "mode": "REQUIRED"},
+    {"name": "country", "type": "STRING", "mode": "NULLABLE"},
+    {"name": "continent", "type": "STRING", "mode": "NULLABLE"},
 ]
+
+default_args = {
+    "start_date": pendulum.datetime(2025, 1, 1, tz="UTC"),
+    "depends_on_past": False,
+    "retries": 2,
+    "retry_delay": timedelta(minutes=1),
+}
 
 
 @task(max_active_tis_per_dag=1)
 def download_shapefile_to_gcs(file_path: UPath):
-    import tempfile
+    """Download shapefile from natural earth to GCS
 
-    import requests
-
+    Args:
+        file_path: GCS filepath with proper connection
+    """
     if file_path.exists():
         logger.info("%s already exists", file_path)
         return
@@ -135,25 +107,15 @@ def reverse_geocode(
 
 # pyright: reportOptionalMemberAccess=false
 
-default_args = {
-    "start_date": pendulum.datetime(2025, 1, 1, tz="UTC"),
-    "depends_on_past": False,
-    "retries": 2,
-    "retry_delay": timedelta(minutes=1),
-}
-
 
 @task
 def download_and_export_to_gcs(
     data_interval_start: pendulum.DateTime | None = None,
     data_interval_end: pendulum.DateTime | None = None,
 ) -> UPath:
-    import requests
-
     base_path = ObjectStoragePath(
         f"gs://{Variable.get('gcp_bucket')}/earthquakes", conn_id="google_cloud_default"
     )
-
     api_url = "https://earthquake.usgs.gov/fdsnws/event/1/query"
     params = {
         "starttime": data_interval_start.to_iso8601_string(),
@@ -170,7 +132,7 @@ def download_and_export_to_gcs(
     path.write_bytes(response.content)
     logger.info("Sent data to %s", str(path))
 
-    return path  # pyright: ignore [reportReturnType]
+    return path
 
 
 @task()
@@ -216,10 +178,9 @@ def import_to_bigquery(table_name: str, features_path: UPath, shapefile_path: UP
         row.update(country=country or UNKNOWN, continent=continent)
 
     errors = client.insert_rows_json(table_name, rows_to_insert)
-    if errors == []:
-        logger.info("New rows have been added.")
-    else:
+    if errors:
         raise RuntimeError(errors)
+    logger.info("New rows have been added.")
 
 
 @dag(
