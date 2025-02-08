@@ -160,16 +160,3 @@ To create the dashboard:
 - **[dbt](https://docs.getdbt.com/)**: Data transformation.
 
 The continent lookup was sourced from [this dataset](https://gist.github.com/stevewithington/20a69c0b6d2ff846ea5d35e5fc47f26c) and converted into [`country_to_continent.json`](/src/dags/include/country_to_continent.json).
-
-## TODO
-
-- [x] Use Terraform/OpenTofu to provision a cloud VM.
-- [x] Choose a cloud provider (GCP, Azure, AWS).
-- [x] Select a dataset/data stream API.
-- [x] Set up an orchestrator for the ETL pipeline.
-  - [x] Run the orchestrator in the cloud.
-  - [x] Load data into a data warehouse.
-- [x] Perform transformations on the data (dbt or Spark).
-- [x] Integrate dbt into the workflow.
-- [x] Build a dashboard from the transformed data.
-- [ ] Deploy the pipeline on Kubernetes in the cloud.
