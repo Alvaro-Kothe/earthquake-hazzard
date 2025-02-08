@@ -14,13 +14,32 @@
           }
         },
         "mode": 493
+      },
+      {
+        "overwrite": true,
+        "path": "/opt/bin/git-sync",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAC/1yOwUoDMRRF9+8rblOpqzZ7pWARQbBgGexKRDIzbyYP06Qmb4r266VDker+3nPOdGKHkm0t0XI8oHbFE1UPm+f3zerlcWmsTzu2Tcps2WX1n4P7YHOebKv10vSid72oH+pFk3Y3q3BwOc2fkvrLy9y749HldtGLGqIp7kOKDPWMzPtURFP+hnQQRZu4xGsFf0lRkg6vmGDewlz9htmRg7fbEyES0IuiGZHn1bZam8uHIQ6FCZhiM4SAxrvYczkp/0WM2kJA80dpMJuNmv0QAnVCPwEAAP//SdZtNTsBAAA="
+        },
+        "mode": 493
       }
     ]
   },
   "systemd": {
     "units": [
       {
-        "contents": "[Unit]\nDescription=Run Earthquake DAGs\nAfter=network-online.target docker.service\nRequires=docker.service\nConditionPathExists=/home/core/earthquake/docker-compose.yaml\nConditionPathExists=/opt/bin/docker-compose\n\n[Service]\nRestart=always\nWorkingDirectory=/home/core/earthquake\nExecStartPre=/usr/bin/chcon -t bin_t /opt/bin/docker-compose\nExecStart=/opt/bin/docker-compose up --build\nExecStop=/opt/bin/docker-compose down\n\n[Install]\nWantedBy=multi-user.target\n",
+        "contents": "[Unit]\nDescription=Set SELinux label on /opt/bin binaries\n\n[Service]\nType=oneshot\nExecStart=/usr/bin/chcon -t bin_t /opt/bin/git-sync /opt/bin/docker-compose\n\n[Install]\nWantedBy=multi-user.target\n",
+        "enabled": true,
+        "name": "selinux-label-opt-bin.service"
+      },
+      {
+        "contents": "[Unit]\nDescription=Synchronize Git Repository\nAfter=network-online.target selinux-label-opt-bin.service\nRequires=selinux-label-opt-bin.service\nConditionPathExists=/opt/bin/git-sync\n\n[Service]\nType=oneshot\nExecStart=/opt/bin/git-sync\nRestart=on-failure\nStartLimitIntervalSec=300\nStartLimitBurst=3\nUser=core\nGroup=core\n\n[Install]\nWantedBy=multi-user.target\n",
+        "enabled": true,
+        "name": "git-sync.service"
+      },
+      {
+        "contents": "[Unit]\nDescription=Run Earthquake DAGs\nAfter=network-online.target git-sync.service docker.service selinux-label-opt-bin.service\nRequires=docker.service git-sync.service\n\n[Service]\nRestart=always\nWorkingDirectory=/home/core/earthquake\nExecStart=/opt/bin/docker-compose up --build\nExecStop=/opt/bin/docker-compose down\n\n[Install]\nWantedBy=multi-user.target\n",
         "enabled": true,
         "name": "earthquake.service"
       }

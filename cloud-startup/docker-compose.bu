@@ -9,23 +9,71 @@ storage:
         source: "https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-x86_64"
         verification:
           hash: sha256-ed1917fb54db184192ea9d0717bcd59e3662ea79db48bff36d3475516c480a6b
+    - path: /opt/bin/git-sync
+      mode: 0755
+      overwrite: true
+      contents:
+        inline: |
+          #!/usr/bin/env bash
+
+          REPO_PATH="/home/core/earthquake"
+
+          REPO_URL="git@github.com:Alvaro-Kothe/earthquake-hazzard.git"
+
+          # Clone the repository if it doesn't exist
+          if [ ! -d "$REPO_PATH/.git" ]; then
+            git clone "$REPO_URL" "$REPO_PATH"
+          else
+            # Pull changes if the repository exists
+            cd "$REPO_PATH" && git pull
+          fi
 
 systemd:
   units:
+    - name: selinux-label-opt-bin.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Set SELinux label on /opt/bin binaries
+
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/bin/chcon -t bin_t /opt/bin/git-sync /opt/bin/docker-compose
+
+        [Install]
+        WantedBy=multi-user.target
+    - name: git-sync.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Synchronize Git Repository
+        After=network-online.target selinux-label-opt-bin.service
+        Requires=selinux-label-opt-bin.service
+        ConditionPathExists=/opt/bin/git-sync
+
+        [Service]
+        Type=oneshot
+        ExecStart=/opt/bin/git-sync
+        Restart=on-failure
+        StartLimitIntervalSec=300
+        StartLimitBurst=3
+        User=core
+        Group=core
+
+        [Install]
+        WantedBy=multi-user.target
+
     - name: earthquake.service
       enabled: true
       contents: |
         [Unit]
         Description=Run Earthquake DAGs
-        After=network-online.target docker.service
-        Requires=docker.service
-        ConditionPathExists=/home/core/earthquake/docker-compose.yaml
-        ConditionPathExists=/opt/bin/docker-compose
+        After=network-online.target git-sync.service docker.service selinux-label-opt-bin.service
+        Requires=docker.service git-sync.service
 
         [Service]
         Restart=always
         WorkingDirectory=/home/core/earthquake
-        ExecStartPre=/usr/bin/chcon -t bin_t /opt/bin/docker-compose
         ExecStart=/opt/bin/docker-compose up --build
         ExecStop=/opt/bin/docker-compose down
 

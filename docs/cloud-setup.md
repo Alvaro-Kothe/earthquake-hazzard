@@ -19,40 +19,61 @@ podman run --interactive --rm quay.io/coreos/butane:release \
 
 ## Cloning the Repository
 
-To import the repository files into the VM, use `git clone` over SSH. Follow these steps:
+You can clone the repository creating an ssh key and deploying it to GitHub or
+forwarding your ssh agent.
+
+### Create ssh Key and Deploy (Recommended)
+
+Adding the ssh key to the virtual machine is needed to sync the repository on startup
+and to automatically start the services with `docker-compose`.
 
 1. **SSH into the VM**
 
-   Forward your SSH agent by running:
+    ```console
+    gcloud compute ssh core@my-vm
+    ```
 
-   ```bash
-   gcloud compute ssh core@my-vm -- -A
-   ```
+2. **Create the ssh key**
 
-2. **Clone the Repository**
+    ```console
+    ssh-keygen -t ed25519 -C my-vm
+    ```
 
-   Clone the repository using SSH:
+    Copy the ssh public key, obtained by the command `cat ~/.ssh/id_ed25519.pub`
 
-   ```bash
-   git clone git@github.com:<my-username>/<my-repository> earthquake
-   ```
+3. **Paste the public key in GitHub**
 
-   This will create an `earthquake` directory containing your project files.
+    In the repository go to settings &rarr; Deploy keys -> Add deploy key.
+    The paste the public key from the VM.
 
-3. **Configure Environment Variables**
+4. **Add github.com to known hosts**
 
-   After cloning, create the `.env` file with the correct configuration values.
-   Note that the path to the GCP private key is not required on the VM.
+    ```console
+    ssh -T git@github.com
+    ```
 
-4. **Restart the Service (if needed)**
+    Just answer yes in the prompt.
 
-   If this is the first time you are setting up the `earthquake` directory,
-   restart the machine or the systemd service.
-   To restart the service, run:
+5. **Restart git-sync service**
 
-   ```bash
-   sudo systemctl restart earthquake
-   ```
+    ```console
+    sudo systemctl restart git-sync.service
+    ```
+
+6. **Set up environment variables**
+
+    ```console
+    cd ~/earthquake
+    cp .env.example .env
+    ```
+
+    Configure the `.env`.
+
+7. **Restart earthquake service**
+
+    ```console
+    sudo systemctl restart earthquake.service
+    ```
 
 ## Executing the Container
 
