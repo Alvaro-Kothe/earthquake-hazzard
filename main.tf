@@ -154,7 +154,7 @@ resource "google_compute_resource_policy" "hourly" {
     }
 
     vm_stop_schedule {
-      schedule = "45 1 * * *"
+      schedule = "0 1 * * *"
     }
   }
 }
