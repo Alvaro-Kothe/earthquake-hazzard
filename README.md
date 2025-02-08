@@ -15,18 +15,18 @@ The dashboard consists of three primary visualization components:
 
 - **Earthquake Map**: Displays the geographical locations where earthquakes occurred.
 - **Time Series Plots**: Two separate plots showing the average earthquake magnitude by country and continent over time.
-  - **NOTE:** Since the data for this plots is aggregated by continent and country,
-    the average magnitude for the $i$-th continent is defined as the average of the average of the earthquake magnitude weighted by the number of earthquakes:
-    $$\frac{\sum_{j=1}^{n_i} \bar x_{ij} m_{ij}}{\sum_{j=1}^{n_i} m_{ij}},$$
-    where $n_{i}$ is the number of countries,
-    $\bar x_{ij}$ is the average magnitude for the $j$-th country in the $i$-th continent
-    and $m_{ij}$ is the number of earthquakes.
+    - **NOTE:** Since the data for this plots is aggregated by continent and country,
+      the average magnitude for the $i$-th continent is defined as the average of the average of the earthquake magnitude weighted by the number of earthquakes:
+      $$\frac{\sum_{j=1}^{n_i} \bar x_{ij} m_{ij}}{\sum_{j=1}^{n_i} m_{ij}},$$
+      where $n_{i}$ is the number of countries,
+      $\bar x_{ij}$ is the average magnitude for the $j$-th country in the $i$-th continent
+      and $m_{ij}$ is the number of earthquakes.
 - **Pie Charts**: Visualizes the distribution of earthquakes by magnitude category, country, and continent.
 
 ## Data Sources
 
 - **Earthquake Data**: Obtained from the [USGS Earthquake Hazards API](https://www.usgs.gov/programs/earthquake-hazards).
-- **Geolocation Data**: Countries and continents are assigned using reverse geolocation with [natural earth](https://www.naturalearthdata.com/).
+- **Geolocation Data**: Countries and continents are assigned using reverse geolocation with [natural earth](https://www.naturalearthdata.com/) shapefiles.
 
 ## Observations
 
@@ -40,7 +40,7 @@ The schema for the earthquake data is defined in [`earthquakes_schema.json`](/bi
 The table is partitioned daily and clustered by `earthquake_id`, `continent` and `country`, as specified in [`main.tf`](/main.tf).
 
 The daily partition on the earthquake events helps building the incremental table for the time series plots.
-The cluster on the `earthquake_id` improves query performance to update the `country` and `continent`.
+The cluster on the `earthquake_id` improves query performance to insert new rows.
 Finally, clustering by `country` and `continent` improves query performance for aggregation queries used for the dashboard.
 
 ## Data Pipeline
@@ -50,31 +50,20 @@ Finally, clustering by `country` and `continent` improves query performance for 
 ![earthquake-hazard-pipeline drawio](https://github.com/user-attachments/assets/59541657-ae36-414d-9a06-89e5dcfee9fa)
 
 The pipeline runs daily on a Google Cloud Compute instance with Fedora CoreOS.
-The instance starts at **00:00 UTC** and shuts down at **01:45 UTC**.
+The instance starts at **00:00 UTC** and shuts down at **01:00 UTC**.
 While active, a systemd service defined in [`cloud-startup`](/cloud-startup/docker-compose.bu) starts the required containers and workflows.
 
 The workflows, implemented as Apache Airflow DAGs, are located in the [`src/dags`](/src/dags) directory. The main DAGs are:
 
 1. **[`get_earthquake_data.py`](/src/dags/get_earthquake_data.py) (ELT - Extract, Load, Transform)**:
-   - Fetches data from the USGS API.
-   - Stores the `geojson` raw data in a Google Cloud Storage data lake.
-   - Processes and loads cleaned data into BigQuery.
-2. **[`get_country_info.py`](/src/dags/get_country_info.py) (Enhancement)**:
-   - Determine the country and continent of each earthquake event.
-3. **[`generate_summary_tables.py`](/src/dags/generate_summary_tables.py) (Transform & Aggregate)**:
-   - Uses `dbt` to generate precomputed summary statistics for dashboard visualization.
-   - The transformation logic is implemented in [`earthquake_analysis`](/src/dags/dbt/earthquake_analysis).
+    - Fetches data from the USGS API.
+    - Stores the `geojson` raw data in a Google Cloud Storage data lake.
+    - Processes and loads cleaned data into BigQuery.
+2. **[`generate_summary_tables.py`](/src/dags/generate_summary_tables.py) (Transform & Aggregate)**:
+    - Uses `dbt` to generate precomputed summary statistics for dashboard visualization.
+    - The transformation logic is implemented in [`earthquake_analysis`](/src/dags/dbt/earthquake_analysis).
 
 ## Local Environment Setup
-
-### Download country boundaries
-
-To identify the country you need to download the natural earth cultural vectors into the `src/dags/include` directory.
-You can do that with the command:
-
-```sh
-make data
-```
 
 ### Cloud Infrastructure Setup
 
@@ -122,7 +111,7 @@ docker compose up
 To start Airflow in development:
 
 ```sh
-docker-compose -f docker-compose.yaml -f docker-compose-dev.yaml up
+docker compose -f docker-compose.yaml -f docker-compose-dev.yaml up
 ```
 
 Ensure environment variables are correctly configured and credentials are provided in both environments.
@@ -158,5 +147,3 @@ To create the dashboard:
 - **[Terraform](https://www.terraform.io/)**: Infrastructure as code.
 - **[USGS Earthquake API](https://earthquake.usgs.gov)**: Earthquake data source.
 - **[dbt](https://docs.getdbt.com/)**: Data transformation.
-
-The continent lookup was sourced from [this dataset](https://gist.github.com/stevewithington/20a69c0b6d2ff846ea5d35e5fc47f26c) and converted into [`country_to_continent.json`](/src/dags/include/country_to_continent.json).
