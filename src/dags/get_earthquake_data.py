@@ -258,8 +258,8 @@ def get_earthquake_data():
         ON target.earthquake_id = source.earthquake_id
         AND target.time = source.time
         WHEN NOT MATCHED THEN
-          INSERT (earthquake_id, position, depth, magnitude, time, alert, significance)
-          VALUES (source.earthquake_id, source.position, source.depth, source.magnitude, source.time, source.alert, source.significance);
+          INSERT (earthquake_id, position, depth, magnitude, time, alert, significance, country, continent)
+          VALUES (source.earthquake_id, source.position, source.depth, source.magnitude, source.time, source.alert, source.significance, source.country, source.continent);
     """
     merge_from_temp = BigQueryInsertJobOperator(
         task_id="merge_from_temp",
