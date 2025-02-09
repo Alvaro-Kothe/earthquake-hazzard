@@ -113,6 +113,15 @@ def download_and_export_to_gcs(
     data_interval_start: pendulum.DateTime | None = None,
     data_interval_end: pendulum.DateTime | None = None,
 ) -> UPath:
+    """Downloads earthquake data from the USGS API and exports it to GCS.
+
+    Args:
+        data_interval_start: Start time of the data interval.
+        data_interval_end: End time of the data interval.
+
+    Returns:
+        Filepath to GCS bucket.
+    """
     base_path = ObjectStoragePath(
         f"gs://{Variable.get('gcp_bucket')}/earthquakes", conn_id="google_cloud_default"
     )
@@ -137,6 +146,16 @@ def download_and_export_to_gcs(
 
 @task()
 def import_to_bigquery(table_name: str, features_path: UPath, shapefile_path: UPath):
+    """Imports earthquake data from GCS to a BigQuery table.
+
+    Args:
+        table_name: Name of the BigQuery table.
+        features_path: Path to the earthquake data in GCS.
+        shapefile_path: Path to the shapefile in GCS.
+
+    Raises:
+        RuntimeError: Raises when occurred any during import to bigquery.
+    """
     import json
 
     hook = BigQueryHook()
