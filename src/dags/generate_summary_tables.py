@@ -6,7 +6,6 @@ import os
 import pathlib
 
 from cosmos import DbtDag, ExecutionConfig, ProfileConfig, ProjectConfig
-from cosmos.config import ProfileConfig
 from cosmos.profiles.bigquery import GoogleCloudOauthProfileMapping
 from pendulum import datetime
 
