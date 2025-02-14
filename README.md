@@ -11,17 +11,18 @@ and how the earthquakes magnitudes changes over time.
 
 <https://github.com/user-attachments/assets/63471a51-158f-4068-8b09-648a2a78d7ee>
 
-The dashboard consists of three primary visualization components:
+The dashboard consists of four primary visualization components:
 
+- **Pie Charts**: Visualizes the distribution of earthquakes by magnitude category, country, and continent.
 - **Earthquake Map**: Displays the geographical locations where earthquakes occurred.
-- **Time Series Plots**: Two separate plots showing the average earthquake magnitude by country and continent over time.
+- **Time Series Plot**: Shows the average earthquake magnitude by continent over time.
     - **NOTE:** Since the data for this plots is aggregated by continent and country,
       the average magnitude for the $i$-th continent is defined as the average of the average of the earthquake magnitude weighted by the number of earthquakes:
       $$\frac{\sum_{j=1}^{n_i} \bar x_{ij} m_{ij}}{\sum_{j=1}^{n_i} m_{ij}},$$
       where $n_{i}$ is the number of countries,
       $\bar x_{ij}$ is the average magnitude for the $j$-th country in the $i$-th continent
       and $m_{ij}$ is the number of earthquakes.
-- **Pie Charts**: Visualizes the distribution of earthquakes by magnitude category, country, and continent.
+- **Bar Plot:** Average earthquakes magnitudes by country.
 
 ## Data Sources
 
