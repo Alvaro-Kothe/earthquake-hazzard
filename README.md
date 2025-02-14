@@ -45,9 +45,7 @@ Finally, clustering by `country` and `continent` improves query performance for 
 
 ## Data Pipeline
 
-<!-- TODO: remove nominatim from flowchart -->
-
-![earthquake-hazard-pipeline drawio](https://github.com/user-attachments/assets/59541657-ae36-414d-9a06-89e5dcfee9fa)
+![earthquake-hazard-pipeline drawio](https://github.com/user-attachments/assets/9cdf7ad1-7c30-4b73-85b3-f70c74642670)
 
 The pipeline runs daily on a Google Cloud Compute instance with Fedora CoreOS.
 The instance starts at **00:00 UTC** and shuts down at **01:00 UTC**.
