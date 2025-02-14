@@ -9,7 +9,7 @@ and how the earthquakes magnitudes changes over time.
 
 ## Dashboard Components
 
-<!-- TODO: Add images or a GIF demonstrating the dashboard's interactivity -->
+<https://github.com/user-attachments/assets/63471a51-158f-4068-8b09-648a2a78d7ee>
 
 The dashboard consists of three primary visualization components:
 
