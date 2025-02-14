@@ -38,7 +38,7 @@ schema_fields = [
 ]
 
 default_args = {
-    "start_date": pendulum.datetime(2025, 1, 1, tz="UTC"),
+    "start_date": pendulum.datetime(2024, 1, 1, tz="UTC"),
     "depends_on_past": False,
     "retries": 2,
     "retry_delay": timedelta(minutes=1),
@@ -176,6 +176,12 @@ def import_to_bigquery(table_name: str, features_path: UPath, shapefile_path: UP
         alert = properties["alert"]
         significance = properties["sig"]
 
+        if any(x is None for x in (id, lon, lat, depth, magnitude, time)):
+            logger.warning(
+                "Skipping: %s (%.2f, %.2f) %.2f %.2f", id, lon, lat, depth, magnitude
+            )
+            continue
+
         rows_to_insert.append(
             {
                 "earthquake_id": id,
@@ -260,7 +266,7 @@ def get_earthquake_data():
         download_shapefile_to_gcs(shapefile_path),
         fill_temp_table,
         merge_from_temp,
-        delete_temp_table.as_teardown(setups=temp_table),
+        delete_temp_table,
     )
 
 
