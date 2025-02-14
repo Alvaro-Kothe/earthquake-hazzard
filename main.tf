@@ -41,13 +41,11 @@ resource "google_storage_bucket" "gcs_bucket" {
 }
 
 resource "google_bigquery_dataset" "default" {
-  dataset_id                      = "earthquake"
-  default_partition_expiration_ms = 10368000000 # 120 days
-  default_table_expiration_ms     = 31536000000 # 365 days
-  location                        = var.location
-  friendly_name                   = "Earthquakes"
-  description                     = "Earthquakes across the world"
-  max_time_travel_hours           = 96 # 4 days
+  dataset_id            = "earthquake"
+  location              = var.location
+  friendly_name         = "Earthquakes"
+  description           = "Earthquakes across the world"
+  max_time_travel_hours = 96 # 4 days
 
   delete_contents_on_destroy = true
 }
